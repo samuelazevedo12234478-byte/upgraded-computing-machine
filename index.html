@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rastreamento de Mão - Espera de 5 Segundos</title>
+  <title>Rastreamento de Mão - Confirmação de 5 Segundos</title>
   <style>
     * {
       box-sizing: border-box;
@@ -63,46 +63,36 @@
       z-index: 10;
     }
 
-    /* Animação do timer de 5 segundos */
-    .timer-container {
+    /* Animação do progresso de hold (segurar o gesto por 5s) */
+    .hold-container {
       position: absolute;
       z-index: 5;
-      width: 50px;
-      height: 50px;
+      width: 60px;
+      height: 60px;
       transform: translate(-50%, -50%);
       pointer-events: none;
     }
 
-    .timer-circle {
+    .hold-circle {
       width: 100%;
       height: 100%;
       border-radius: 50%;
-      background: conic-gradient(#007bff 0deg, rgba(255, 255, 255, 0.2) 0deg);
+      background: conic-gradient(#007bff var(--progress, 0deg), rgba(255, 255, 255, 0.2) 0deg);
       display: flex;
       align-items: center;
       justify-content: center;
-      animation: fillTimer 5s linear forwards;
       box-shadow: 0 0 15px rgba(0, 123, 255, 0.6);
     }
 
-    .timer-inner {
-      width: 34px;
-      height: 34px;
+    .hold-inner {
+      width: 42px;
+      height: 42px;
       background-color: #ff6600;
       border-radius: 50%;
       border: 2px solid #fff;
     }
 
-    @keyframes fillTimer {
-      0% {
-        background: conic-gradient(#007bff 0deg, rgba(255, 255, 255, 0.2) 0deg);
-      }
-      100% {
-        background: conic-gradient(#007bff 360deg, rgba(255, 255, 255, 0.2) 360deg);
-      }
-    }
-
-    /* Estilo do botão gerado */
+    /* Estilo do botão final */
     .spawned-btn {
       position: absolute;
       z-index: 5;
@@ -141,8 +131,12 @@
     const startBtn = document.getElementById('startBtn');
     const errorLog = document.getElementById('errorLog');
 
-    let isHandClosedState = false;
     let buttonCount = 0;
+    
+    // Variáveis para controlar o tempo segurado
+    let holdStartTime = null;
+    let holdContainerEl = null;
+    const REQUIRED_HOLD_TIME = 5000; // 5000ms = 5 segundos
 
     const hands = new Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
@@ -164,6 +158,10 @@
 
       // Desenha o feed da câmera
       canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+      let gestureDetectedThisFrame = false;
+      let targetX = 0;
+      let targetY = 0;
 
       if (results.multiHandLandmarks) {
         for (const landmarks of results.multiHandLandmarks) {
@@ -208,58 +206,105 @@
           const MAX_GAP = 0.045; 
           const fingersClosedTogether = (distIndexMiddle < MAX_GAP) && (distMiddleRing < MAX_GAP) && (distRingPinky < MAX_GAP);
 
-          // Dispara apenas quando os dedos estiverem esticados e juntinhos
           if (allFingersExtended && fingersClosedTogether) {
-            if (!isHandClosedState) {
-              isHandClosedState = true;
-
-              const posX = landmarks[9].x * canvasElement.width;
-              const posY = landmarks[9].y * canvasElement.height;
-
-              triggerSpawnSequence(posX, posY);
-            }
-          } else {
-            isHandClosedState = false;
+            gestureDetectedThisFrame = true;
+            targetX = landmarks[9].x * canvasElement.width;
+            targetY = landmarks[9].y * canvasElement.height;
+            break; 
           }
         }
       }
+
+      // --- LÓGICA DE ESPERA DOS 5 SEGUNDOS ---
+      if (gestureDetectedThisFrame) {
+        const now = Date.now();
+
+        if (!holdStartTime) {
+          // Começa a contar os 5 segundos
+          holdStartTime = now;
+          createHoldUI(targetX, targetY);
+        } else {
+          // Atualiza posição do anel visual junto com a mão
+          updateHoldUIPosition(targetX, targetY);
+
+          const elapsedTime = now - holdStartTime;
+          const progressDeg = Math.min((elapsedTime / REQUIRED_HOLD_TIME) * 360, 360);
+          
+          updateHoldUIProgress(progressDeg);
+
+          // Se segurou por 5 segundos seguidos
+          if (elapsedTime >= REQUIRED_HOLD_TIME) {
+            removeHoldUI();
+            createButtonAt(targetX, targetY);
+            holdStartTime = null; 
+          }
+        }
+      } else {
+        // Se desfizer o gesto antes dos 5s, reseta a contagem e remove a UI
+        if (holdStartTime) {
+          removeHoldUI();
+          holdStartTime = null;
+        }
+      }
+
       canvasCtx.restore();
     });
 
-    function triggerSpawnSequence(x, y) {
-      // Cria a estrutura do timer visual de 5s
-      const container = document.createElement('div');
-      container.className = 'timer-container';
-      container.style.left = `${x}px`;
-      container.style.top = `${y}px`;
+    // Função para criar o indicador visual de progresso
+    function createHoldUI(x, y) {
+      removeHoldUI();
+
+      holdContainerEl = document.createElement('div');
+      holdContainerEl.className = 'hold-container';
+      holdContainerEl.style.left = `${x}px`;
+      holdContainerEl.style.top = `${y}px`;
 
       const circle = document.createElement('div');
-      circle.className = 'timer-circle';
+      circle.className = 'hold-circle';
+      circle.id = 'holdCircle';
 
       const inner = document.createElement('div');
-      inner.className = 'timer-inner';
+      inner.className = 'hold-inner';
 
       circle.appendChild(inner);
-      container.appendChild(circle);
-      document.body.appendChild(container);
+      holdContainerEl.appendChild(circle);
+      document.body.appendChild(holdContainerEl);
+    }
 
-      // Espera exatamente 5 segundos (5000ms)
-      setTimeout(() => {
-        container.remove();
+    function updateHoldUIPosition(x, y) {
+      if (holdContainerEl) {
+        holdContainerEl.style.left = `${x}px`;
+        holdContainerEl.style.top = `${y}px`;
+      }
+    }
 
-        buttonCount++;
-        const btn = document.createElement('button');
-        btn.className = 'spawned-btn';
-        btn.innerText = `Botão #${buttonCount}`;
-        btn.style.left = `${x}px`;
-        btn.style.top = `${y}px`;
+    function updateHoldUIProgress(degrees) {
+      const circle = document.getElementById('holdCircle');
+      if (circle) {
+        circle.style.setProperty('--progress', `${degrees}deg`);
+      }
+    }
 
-        btn.onclick = () => {
-          alert(`Você clicou no ${btn.innerText}!`);
-        };
+    function removeHoldUI() {
+      if (holdContainerEl) {
+        holdContainerEl.remove();
+        holdContainerEl = null;
+      }
+    }
 
-        document.body.appendChild(btn);
-      }, 5000); // 5000ms = 5 segundos
+    function createButtonAt(x, y) {
+      buttonCount++;
+      const btn = document.createElement('button');
+      btn.className = 'spawned-btn';
+      btn.innerText = `Botão #${buttonCount}`;
+      btn.style.left = `${x}px`;
+      btn.style.top = `${y}px`;
+
+      btn.onclick = () => {
+        alert(`Você clicou no ${btn.innerText}!`);
+      };
+
+      document.body.appendChild(btn);
     }
 
     async function startCamera() {
