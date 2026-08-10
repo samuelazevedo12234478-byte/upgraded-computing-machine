@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rastreamento de Mão - Tela Cheia</title>
+  <title>Rastreamento de Mão - Criar Botão por Gesto</title>
   <style>
     * {
       box-sizing: border-box;
@@ -28,6 +28,10 @@
       height: 100vh;
       object-fit: cover;
       display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
     }
 
     #startBtn {
@@ -58,6 +62,27 @@
       width: 90%;
       z-index: 10;
     }
+
+    /* Estilo para os botões gerados dinamicamente */
+    .spawned-btn {
+      position: absolute;
+      z-index: 5;
+      padding: 10px 20px;
+      background-color: #28a745;
+      color: #fff;
+      font-weight: bold;
+      border: 2px solid #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      cursor: pointer;
+      transform: translate(-50%, -50%);
+      animation: popup 0.2s ease-out;
+    }
+
+    @keyframes popup {
+      0% { transform: translate(-50%, -50%) scale(0); }
+      100% { transform: translate(-50%, -50%) scale(1); }
+    }
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
@@ -77,6 +102,9 @@
     const startBtn = document.getElementById('startBtn');
     const errorLog = document.getElementById('errorLog');
 
+    let isPinching = false; // Controle para evitar criar vários botões no mesmo gesto
+    let buttonCount = 0;
+
     const hands = new Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
@@ -89,17 +117,15 @@
     });
 
     hands.onResults((results) => {
-      // Ajusta o tamanho interno do canvas para a resolução da janela
       canvasElement.width = window.innerWidth;
       canvasElement.height = window.innerHeight;
 
       canvasCtx.save();
       canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-      // Desenha o feed da câmera cobrindo toda a dimensão do canvas
+      // Desenha o feed da câmera
       canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
-      // Desenha o esqueleto das mãos
       if (results.multiHandLandmarks) {
         for (const landmarks of results.multiHandLandmarks) {
           
@@ -111,7 +137,7 @@
             canvasCtx.beginPath();
             canvasCtx.moveTo(from.x * canvasElement.width, from.y * canvasElement.height);
             canvasCtx.lineTo(to.x * canvasElement.width, to.y * canvasElement.height);
-            canvasCtx.strokeStyle = '#FFFFFF'; // Cor alterada para branco
+            canvasCtx.strokeStyle = '#FFFFFF';
             canvasCtx.lineWidth = 4;
             canvasCtx.stroke();
           }
@@ -123,13 +149,55 @@
 
             canvasCtx.beginPath();
             canvasCtx.arc(x, y, 6, 0, 2 * Math.PI);
-            canvasCtx.fillStyle = '#FF6600'; // Cor alterada para laranja
+            canvasCtx.fillStyle = '#FF6600';
             canvasCtx.fill();
+          }
+
+          // --- DETECÇÃO DO GESTO DE PINÇA (Polegar + Indicador) ---
+          const thumbTip = landmarks[4];  // Ponta do Polegar
+          const indexTip = landmarks[8];  // Ponta do Indicador
+
+          // Calcula a distância entre as pontas do polegar e do indicador
+          const distance = Math.hypot(
+            (thumbTip.x - indexTip.x),
+            (thumbTip.y - indexTip.y)
+          );
+
+          // Se os dedos estiverem bem próximos (distância < 0.05)
+          if (distance < 0.05) {
+            if (!isPinching) {
+              isPinching = true;
+
+              // Calcula o ponto médio onde o botão deve aparecer
+              const posX = ((thumbTip.x + indexTip.x) / 2) * canvasElement.width;
+              const posY = ((thumbTip.y + indexTip.y) / 2) * canvasElement.height;
+
+              createButtonAt(posX, posY);
+            }
+          } else {
+            isPinching = false; // Libera para um novo gesto quando afastar os dedos
           }
         }
       }
       canvasCtx.restore();
     });
+
+    // Função para criar o botão HTML na tela
+    function createButtonAt(x, y) {
+      buttonCount++;
+      const btn = document.createElement('button');
+      btn.className = 'spawned-btn';
+      btn.innerText = `Botão #${buttonCount}`;
+      btn.style.left = `${x}px`;
+      btn.style.top = `${y}px`;
+
+      // Ação de clique no botão criado
+      btn.onclick = () => {
+        alert(`Você clicou no ${btn.innerText}!`);
+      };
+
+      document.body.appendChild(btn);
+    }
 
     async function startCamera() {
       startBtn.style.display = 'none';
@@ -164,7 +232,6 @@
 
     startBtn.addEventListener('click', startCamera);
 
-    // Reajusta o tamanho do canvas se a tela for redimensionada ou girada
     window.addEventListener('resize', () => {
       canvasElement.width = window.innerWidth;
       canvasElement.height = window.innerHeight;
