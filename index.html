@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rastreamento de Mão - Tolerância Ajustada</title>
+  <title>Rastreamento de Mão - Gap 0.095</title>
   <style>
     * {
       box-sizing: border-box;
@@ -63,7 +63,7 @@
       z-index: 10;
     }
 
-    /* Animação do progresso de hold (5s) */
+    /* Animação do progresso de 2 segundos */
     .hold-container {
       position: absolute;
       z-index: 5;
@@ -133,10 +133,10 @@
 
     let buttonCount = 0;
     
-    // Controle de tempo de carregamento (5s)
+    // Tempo de espera ajustado para 2 segundos (2000ms)
     let holdStartTime = null;
     let holdContainerEl = null;
-    const REQUIRED_HOLD_TIME = 5000; 
+    const REQUIRED_HOLD_TIME = 2000; 
 
     const hands = new Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
@@ -166,7 +166,7 @@
       if (results.multiHandLandmarks) {
         for (const landmarks of results.multiHandLandmarks) {
           
-          // Desenha as conexões em BRANCO
+          // Desenha os ossos em BRANCO
           for (const connection of HAND_CONNECTIONS) {
             const from = landmarks[connection[0]];
             const to = landmarks[connection[1]];
@@ -190,7 +190,7 @@
             canvasCtx.fill();
           }
 
-          // 1. Verifica se os 4 dedos estão esticados para cima
+          // 1. Verifica se os 4 dedos principais estão esticados
           const isIndexOpen = landmarks[8].y < landmarks[6].y;
           const isMiddleOpen = landmarks[12].y < landmarks[10].y;
           const isRingOpen = landmarks[16].y < landmarks[14].y;
@@ -198,14 +198,13 @@
 
           const allFingersExtended = isIndexOpen && isMiddleOpen && isRingOpen && isPinkyOpen;
 
-          // 2. Medição da distância entre dedos com TOLERÂNCIA MAIOR
-          // Compara os pontos intermediários (nós do meio) que são mais estáveis
-          const distIndexMiddle = Math.hypot(landmarks[7].x - landmarks[11].x, landmarks[7].y - landmarks[11].y);
-          const distMiddleRing  = Math.hypot(landmarks[11].x - landmarks[15].x, landmarks[11].y - landmarks[15].y);
-          const distRingPinky   = Math.hypot(landmarks[15].x - landmarks[19].x, landmarks[15].y - landmarks[19].y);
+          // 2. Medição da distância com o limite exato de 0.095
+          const distIndexMiddle = Math.hypot(landmarks[5].x - landmarks[9].x, landmarks[5].y - landmarks[9].y);
+          const distMiddleRing  = Math.hypot(landmarks[9].x - landmarks[13].x, landmarks[9].y - landmarks[13].y);
+          const distRingPinky   = Math.hypot(landmarks[13].x - landmarks[17].x, landmarks[13].y - landmarks[17].y);
 
-          // Folga ampliada (0.09 ao invés de 0.045) para detectar a mão normal sem precisar espremer
-          const MAX_GAP = 0.09; 
+          // Limite alterado para 0.095
+          const MAX_GAP = 0.095; 
           const fingersClosedTogether = (distIndexMiddle < MAX_GAP) && (distMiddleRing < MAX_GAP) && (distRingPinky < MAX_GAP);
 
           if (allFingersExtended && fingersClosedTogether) {
@@ -217,7 +216,7 @@
         }
       }
 
-      // --- LÓGICA DO TEMPORIZADOR DE 5 SEGUNDOS ---
+      // --- TEMPORIZADOR DE 2 SEGUNDOS ---
       if (gestureDetectedThisFrame) {
         const now = Date.now();
 
