@@ -103,6 +103,7 @@
       if (results.multiHandLandmarks) {
         for (const landmarks of results.multiHandLandmarks) {
           
+          // Desenha os ossos em BRANCO
           for (const connection of HAND_CONNECTIONS) {
             const from = landmarks[connection[0]];
             const to = landmarks[connection[1]];
@@ -110,18 +111,19 @@
             canvasCtx.beginPath();
             canvasCtx.moveTo(from.x * canvasElement.width, from.y * canvasElement.height);
             canvasCtx.lineTo(to.x * canvasElement.width, to.y * canvasElement.height);
-            canvasCtx.strokeStyle = '#00FF88';
+            canvasCtx.strokeStyle = '#FFFFFF'; // Cor alterada para branco
             canvasCtx.lineWidth = 4;
             canvasCtx.stroke();
           }
 
+          // Desenha os pontos em LARANJA
           for (const landmark of landmarks) {
             const x = landmark.x * canvasElement.width;
             const y = landmark.y * canvasElement.height;
 
             canvasCtx.beginPath();
             canvasCtx.arc(x, y, 6, 0, 2 * Math.PI);
-            canvasCtx.fillStyle = '#FF0055';
+            canvasCtx.fillStyle = '#FF6600'; // Cor alterada para laranja
             canvasCtx.fill();
           }
         }
