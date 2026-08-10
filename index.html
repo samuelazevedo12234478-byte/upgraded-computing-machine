@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rastreamento de Mão - Gap 0.095</title>
+  <title>Realidade Aumentada com Parallax e Física 3D</title>
   <style>
     * {
       box-sizing: border-box;
@@ -15,23 +15,106 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background-color: #000;
-      font-family: sans-serif;
+      background-color: #05070f;
+      font-family: 'Segoe UI', Roboto, sans-serif;
     }
 
     video {
       display: none;
     }
 
-    canvas {
+    /* Canvas 2D para feed da câmera e feixe laser */
+    #output_canvas {
       width: 100vw;
       height: 100vh;
       object-fit: cover;
-      display: block;
       position: absolute;
       top: 0;
       left: 0;
       z-index: 1;
+    }
+
+    /* Stacking Context 3D para o Painel Flutuante */
+    #viewport-3d {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 2;
+      perspective: 1200px; /* Profundidade de campo realista */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    /* Painel 3D Reativo */
+    #ui-panel {
+      width: 80%;
+      max-width: 650px;
+      padding: 30px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 24px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      transform-style: preserve-3d;
+      will-change: transform;
+      transition: border-color 0.3s ease;
+    }
+
+    #ui-title {
+      color: #f1f5f9;
+      font-size: 1.4rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 700;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+      transform: translateZ(20px); /* Projeção 3D do texto */
+    }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      width: 100%;
+      transform-style: preserve-3d;
+    }
+
+    .vr-btn {
+      padding: 18px 10px;
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95));
+      border: 2px solid rgba(56, 189, 248, 0.25);
+      border-radius: 14px;
+      color: #38bdf8;
+      font-size: 1rem;
+      font-weight: bold;
+      text-align: center;
+      transition: background 0.2s, border-color 0.2s, transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
+      transform: translateZ(10px);
+    }
+
+    /* Estado Focado pelo Raio Laser */
+    .vr-btn.hovered {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.4), rgba(14, 165, 233, 0.6));
+      border-color: #38bdf8;
+      color: #ffffff;
+      transform: translateZ(35px) scale(1.06);
+      box-shadow: 0 10px 25px rgba(56, 189, 248, 0.5);
+    }
+
+    /* Estado Clicado via Pinça */
+    .vr-btn.active {
+      background: #22c55e !important;
+      border-color: #4ade80 !important;
+      color: #ffffff !important;
+      transform: translateZ(15px) scale(0.96) !important;
+      box-shadow: 0 0 35px rgba(34, 197, 94, 0.9) !important;
     }
 
     #startBtn {
@@ -40,77 +123,30 @@
       left: 50%;
       transform: translate(-50%, -50%);
       z-index: 10;
-      padding: 16px 32px;
-      font-size: 1.1rem;
+      padding: 18px 36px;
+      font-size: 1.2rem;
       font-weight: bold;
       color: #fff;
-      background-color: #007bff;
+      background: linear-gradient(135deg, #0284c7, #2563eb);
       border: none;
-      border-radius: 30px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      border-radius: 50px;
+      box-shadow: 0 10px 25px rgba(2, 132, 199, 0.5);
       cursor: pointer;
     }
 
-    #errorLog {
+    #statusLog {
       position: absolute;
       bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
-      color: #ff5555;
-      font-size: 0.9rem;
-      text-align: center;
-      width: 90%;
       z-index: 10;
-    }
-
-    /* Animação do progresso de 2 segundos */
-    .hold-container {
-      position: absolute;
-      z-index: 5;
-      width: 65px;
-      height: 65px;
-      transform: translate(-50%, -50%);
-      pointer-events: none;
-    }
-
-    .hold-circle {
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-      background: conic-gradient(#007bff var(--progress, 0deg), rgba(255, 255, 255, 0.2) 0deg);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 0 15px rgba(0, 123, 255, 0.6);
-    }
-
-    .hold-inner {
-      width: 45px;
-      height: 45px;
-      background-color: #ff6600;
-      border-radius: 50%;
-      border: 2px solid #fff;
-    }
-
-    /* Estilo do botão final */
-    .spawned-btn {
-      position: absolute;
-      z-index: 5;
-      padding: 12px 24px;
-      background-color: #28a745;
-      color: #fff;
-      font-weight: bold;
-      border: 2px solid #fff;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-      cursor: pointer;
-      transform: translate(-50%, -50%);
-      animation: popup 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-
-    @keyframes popup {
-      0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-      100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+      color: #94a3b8;
+      font-size: 0.95rem;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 8px 18px;
+      border-radius: 20px;
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
   </style>
 
@@ -119,34 +155,52 @@
 </head>
 <body>
 
-  <button id="startBtn">Iniciar Câmera</button>
+  <button id="startBtn">Iniciar Câmera AR 3D</button>
   <video id="webcam" playsinline></video>
   <canvas id="output_canvas"></canvas>
-  <div id="errorLog"></div>
+
+  <div id="viewport-3d">
+    <div id="ui-panel">
+      <div id="ui-title">Painel Virtual Espacial</div>
+      <div class="button-grid">
+        <div class="vr-btn" data-id="1">Item 01</div>
+        <div class="vr-btn" data-id="2">Item 02</div>
+        <div class="vr-btn" data-id="3">Item 03</div>
+        <div class="vr-btn" data-id="4">Item 04</div>
+        <div class="vr-btn" data-id="5">Item 05</div>
+        <div class="vr-btn" data-id="6">Item 06</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="statusLog">Mova a mão para inclinar a perspectiva 3D. Aponta e faça a pinça para clicar.</div>
 
   <script>
     const videoElement = document.getElementById('webcam');
     const canvasElement = document.getElementById('output_canvas');
     const canvasCtx = canvasElement.getContext('2d');
     const startBtn = document.getElementById('startBtn');
-    const errorLog = document.getElementById('errorLog');
+    const statusLog = document.getElementById('statusLog');
+    const uiPanel = document.getElementById('ui-panel');
+    const vrButtons = document.querySelectorAll('.vr-btn');
 
-    let buttonCount = 0;
-    
-    // Tempo de espera ajustado para 2 segundos (2000ms)
-    let holdStartTime = null;
-    let holdContainerEl = null;
-    const REQUIRED_HOLD_TIME = 2000; 
+    let wasPinching = false;
+    let smoothPointerX = window.innerWidth / 2;
+    let smoothPointerY = window.innerHeight / 2;
+
+    // Variáveis de controle do Parallax 3D (Física Suave)
+    let targetRotateX = 0, targetRotateY = 0, targetTranslateX = 0;
+    let currentRotateX = 0, currentRotateY = 0, currentTranslateX = 0;
 
     const hands = new Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
 
     hands.setOptions({
-      maxNumHands: 2,
+      maxNumHands: 1,
       modelComplexity: 1,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5
+      minDetectionConfidence: 0.6,
+      minTrackingConfidence: 0.6
     });
 
     hands.onResults((results) => {
@@ -155,164 +209,163 @@
 
       canvasCtx.save();
       canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-
-      // Desenha o vídeo da câmera
       canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
-      let gestureDetectedThisFrame = false;
-      let targetX = 0;
-      let targetY = 0;
+      let isHoveringAny = false;
 
-      if (results.multiHandLandmarks) {
-        for (const landmarks of results.multiHandLandmarks) {
-          
-          // Desenha os ossos em BRANCO
-          for (const connection of HAND_CONNECTIONS) {
-            const from = landmarks[connection[0]];
-            const to = landmarks[connection[1]];
-            
-            canvasCtx.beginPath();
-            canvasCtx.moveTo(from.x * canvasElement.width, from.y * canvasElement.height);
-            canvasCtx.lineTo(to.x * canvasElement.width, to.y * canvasElement.height);
-            canvasCtx.strokeStyle = '#FFFFFF';
-            canvasCtx.lineWidth = 4;
-            canvasCtx.stroke();
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        const landmarks = results.multiHandLandmarks[0];
+
+        // Desenha a mão com estilo cibernético
+        drawHandMesh(landmarks);
+
+        // Pontos de interesse
+        const thumbTip = landmarks[4];
+        const indexTip = landmarks[8];
+        const indexBase = landmarks[5];
+        const wrist = landmarks[0];
+
+        // 1. CÁLCULO DE PARALLAX E PERSPECTIVA 3D (Orientação no espaço)
+        // Mede a inclinação lateral e a translação baseada na posição da mão na tela
+        const handCenterX = (indexBase.x - 0.5) * 2; // de -1 a 1
+        const handCenterY = (indexBase.y - 0.5) * 2; // de -1 a 1
+
+        // Define os ângulos-alvo para entortar o painel conforme o ponto de vista
+        targetRotateY = handCenterX * -28; // Entorta pros lados ao olhar em ângulo
+        targetRotateX = handCenterY * 20;  // Entorta pra cima/baixo
+        targetTranslateX = handCenterX * -60; // Desloca levemente com efeito de profundidade
+
+        // 2. PROJEÇÃO DO RAIO LASER ("Fiozinho")
+        const originX = indexTip.x * canvasElement.width;
+        const originY = indexTip.y * canvasElement.height;
+
+        const dirX = (indexTip.x - indexBase.x) * 3.8;
+        const dirY = (indexTip.y - indexBase.y) * 3.8;
+
+        const targetX = (indexTip.x + dirX) * canvasElement.width;
+        const targetY = (indexTip.y + dirY) * canvasElement.height;
+
+        // Amortecimento do feixe de luz
+        smoothPointerX += (targetX - smoothPointerX) * 0.22;
+        smoothPointerY += (targetY - smoothPointerY) * 0.22;
+
+        // 3. DETECÇÃO DE PINÇA (Confirmar Clique)
+        const palmWidth = Math.hypot(landmarks[5].x - landmarks[17].x, landmarks[5].y - landmarks[17].y);
+        const pinchDistance = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
+        const isPinching = (pinchDistance / palmWidth) < 0.32;
+
+        // 4. TESTE DE COLISÃO COM OS BOTÕES 3D
+        vrButtons.forEach(btn => {
+          const rect = btn.getBoundingClientRect();
+
+          const isInside = smoothPointerX >= rect.left && 
+                           smoothPointerX <= rect.right && 
+                           smoothPointerY >= rect.top && 
+                           smoothPointerY <= rect.bottom;
+
+          if (isInside) {
+            isHoveringAny = true;
+            btn.classList.add('hovered');
+
+            if (isPinching && !wasPinching) {
+              btn.classList.add('active');
+              statusLog.innerText = `Selecionou: ${btn.innerText}`;
+              setTimeout(() => btn.classList.remove('active'), 250);
+            }
+          } else {
+            btn.classList.remove('hovered');
           }
+        });
 
-          // Desenha os pontos em LARANJA
-          for (const landmark of landmarks) {
-            const x = landmark.x * canvasElement.width;
-            const y = landmark.y * canvasElement.height;
+        // Desegnar Feixe e Mira
+        drawLaserRay(originX, originY, smoothPointerX, smoothPointerY, isPinching, isHoveringAny);
+        wasPinching = isPinching;
 
-            canvasCtx.beginPath();
-            canvasCtx.arc(x, y, 6, 0, 2 * Math.PI);
-            canvasCtx.fillStyle = '#FF6600';
-            canvasCtx.fill();
-          }
-
-          // 1. Verifica se os 4 dedos principais estão esticados
-          const isIndexOpen = landmarks[8].y < landmarks[6].y;
-          const isMiddleOpen = landmarks[12].y < landmarks[10].y;
-          const isRingOpen = landmarks[16].y < landmarks[14].y;
-          const isPinkyOpen = landmarks[20].y < landmarks[18].y;
-
-          const allFingersExtended = isIndexOpen && isMiddleOpen && isRingOpen && isPinkyOpen;
-
-          // 2. Medição da distância com o limite exato de 0.095
-          const distIndexMiddle = Math.hypot(landmarks[5].x - landmarks[9].x, landmarks[5].y - landmarks[9].y);
-          const distMiddleRing  = Math.hypot(landmarks[9].x - landmarks[13].x, landmarks[9].y - landmarks[13].y);
-          const distRingPinky   = Math.hypot(landmarks[13].x - landmarks[17].x, landmarks[13].y - landmarks[17].y);
-
-          // Limite alterado para 0.095
-          const MAX_GAP = 0.095; 
-          const fingersClosedTogether = (distIndexMiddle < MAX_GAP) && (distMiddleRing < MAX_GAP) && (distRingPinky < MAX_GAP);
-
-          if (allFingersExtended && fingersClosedTogether) {
-            gestureDetectedThisFrame = true;
-            targetX = landmarks[9].x * canvasElement.width;
-            targetY = landmarks[9].y * canvasElement.height;
-            break; 
-          }
-        }
-      }
-
-      // --- TEMPORIZADOR DE 2 SEGUNDOS ---
-      if (gestureDetectedThisFrame) {
-        const now = Date.now();
-
-        if (!holdStartTime) {
-          holdStartTime = now;
-          createHoldUI(targetX, targetY);
-        } else {
-          updateHoldUIPosition(targetX, targetY);
-
-          const elapsedTime = now - holdStartTime;
-          const progressDeg = Math.min((elapsedTime / REQUIRED_HOLD_TIME) * 360, 360);
-          
-          updateHoldUIProgress(progressDeg);
-
-          if (elapsedTime >= REQUIRED_HOLD_TIME) {
-            removeHoldUI();
-            createButtonAt(targetX, targetY);
-            holdStartTime = null; 
-          }
-        }
       } else {
-        if (holdStartTime) {
-          removeHoldUI();
-          holdStartTime = null;
-        }
+        // Se a mão sair, o painel volta suavemente para a posição frontal neutra
+        targetRotateX = 0;
+        targetRotateY = 0;
+        targetTranslateX = 0;
+        vrButtons.forEach(btn => btn.classList.remove('hovered'));
+        wasPinching = false;
       }
+
+      // Aplica Interpolação Linear (LERP) para garantir física fluida ao virar a perspectiva
+      currentRotateX += (targetRotateX - currentRotateX) * 0.08;
+      currentRotateY += (targetRotateY - currentRotateY) * 0.08;
+      currentTranslateX += (targetTranslateX - currentTranslateX) * 0.08;
+
+      uiPanel.style.transform = `translateX(${currentTranslateX}px) rotateX(${currentRotateX}deg) rotateY(${currentRotateY}deg)`;
 
       canvasCtx.restore();
     });
 
-    function createHoldUI(x, y) {
-      removeHoldUI();
+    function drawHandMesh(landmarks) {
+      for (const connection of HAND_CONNECTIONS) {
+        const from = landmarks[connection[0]];
+        const to = landmarks[connection[1]];
 
-      holdContainerEl = document.createElement('div');
-      holdContainerEl.className = 'hold-container';
-      holdContainerEl.style.left = `${x}px`;
-      holdContainerEl.style.top = `${y}px`;
+        canvasCtx.beginPath();
+        canvasCtx.moveTo(from.x * canvasElement.width, from.y * canvasElement.height);
+        canvasCtx.lineTo(to.x * canvasElement.width, to.y * canvasElement.height);
+        canvasCtx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+        canvasCtx.lineWidth = 2;
+        canvasCtx.stroke();
+      }
 
-      const circle = document.createElement('div');
-      circle.className = 'hold-circle';
-      circle.id = 'holdCircle';
-
-      const inner = document.createElement('div');
-      inner.className = 'hold-inner';
-
-      circle.appendChild(inner);
-      holdContainerEl.appendChild(circle);
-      document.body.appendChild(holdContainerEl);
-    }
-
-    function updateHoldUIPosition(x, y) {
-      if (holdContainerEl) {
-        holdContainerEl.style.left = `${x}px`;
-        holdContainerEl.style.top = `${y}px`;
+      for (const landmark of landmarks) {
+        canvasCtx.beginPath();
+        canvasCtx.arc(landmark.x * canvasElement.width, landmark.y * canvasElement.height, 4, 0, 2 * Math.PI);
+        canvasCtx.fillStyle = '#38bdf8';
+        canvasCtx.fill();
       }
     }
 
-    function updateHoldUIProgress(degrees) {
-      const circle = document.getElementById('holdCircle');
-      if (circle) {
-        circle.style.setProperty('--progress', `${degrees}deg`);
-      }
-    }
+    function drawLaserRay(startX, startY, endX, endY, isPinching, isHovering) {
+      let colorCore = isPinching ? '#22c55e' : (isHovering ? '#38bdf8' : '#f0f9ff');
+      let colorGlow = isPinching ? 'rgba(34, 197, 94, 0.8)' : (isHovering ? 'rgba(56, 189, 248, 0.8)' : 'rgba(14, 165, 233, 0.35)');
 
-    function removeHoldUI() {
-      if (holdContainerEl) {
-        holdContainerEl.remove();
-        holdContainerEl = null;
-      }
-    }
+      // Linha exterior do laser (Glow)
+      canvasCtx.beginPath();
+      canvasCtx.moveTo(startX, startY);
+      canvasCtx.lineTo(endX, endY);
+      canvasCtx.strokeStyle = colorGlow;
+      canvasCtx.lineWidth = isPinching ? 8 : 5;
+      canvasCtx.shadowColor = colorCore;
+      canvasCtx.shadowBlur = 12;
+      canvasCtx.stroke();
 
-    function createButtonAt(x, y) {
-      buttonCount++;
-      const btn = document.createElement('button');
-      btn.className = 'spawned-btn';
-      btn.innerText = `Botão #${buttonCount}`;
-      btn.style.left = `${x}px`;
-      btn.style.top = `${y}px`;
+      // Núcleo branco brilhante do laser
+      canvasCtx.beginPath();
+      canvasCtx.moveTo(startX, startY);
+      canvasCtx.lineTo(endX, endY);
+      canvasCtx.strokeStyle = '#ffffff';
+      canvasCtx.lineWidth = 2;
+      canvasCtx.stroke();
+      canvasCtx.shadowBlur = 0;
 
-      btn.onclick = () => {
-        alert(`Você clicou no ${btn.innerText}!`);
-      };
+      // Retículo de mira no ponto de contato
+      canvasCtx.beginPath();
+      canvasCtx.arc(endX, endY, isPinching ? 6 : 9, 0, 2 * Math.PI);
+      canvasCtx.fillStyle = colorCore;
+      canvasCtx.fill();
 
-      document.body.appendChild(btn);
+      canvasCtx.beginPath();
+      canvasCtx.arc(endX, endY, isPinching ? 11 : 15, 0, 2 * Math.PI);
+      canvasCtx.strokeStyle = colorCore;
+      canvasCtx.lineWidth = 2;
+      canvasCtx.stroke();
     }
 
     async function startCamera() {
       startBtn.style.display = 'none';
-      errorLog.innerText = '';
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            facingMode: { ideal: "environment" },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 }
+            facingMode: { ideal: "user" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
           }
         });
         
@@ -329,7 +382,7 @@
 
       } catch (err) {
         console.error(err);
-        errorLog.innerText = "Erro ao acessar a câmera: " + err.message;
+        statusLog.innerText = "Erro ao acessar a câmera: " + err.message;
         startBtn.style.display = 'block';
       }
     }
