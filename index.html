@@ -3,35 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rastreamento de Mão - Câmera Traseira</title>
+  <title>Rastreamento de Mão - Tela Cheia</title>
   <style>
-    body {
+    * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
-      background-color: #121212;
-      color: #ffffff;
-      font-family: sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      overflow: hidden;
     }
 
-    h1 {
-      font-size: 1.2rem;
-      margin-bottom: 10px;
-    }
-
-    .container {
-      position: relative;
+    body, html {
       width: 100%;
-      max-width: 640px;
-      aspect-ratio: 4 / 3;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      height: 100%;
+      overflow: hidden;
+      background-color: #000;
+      font-family: sans-serif;
     }
 
     video {
@@ -39,32 +24,39 @@
     }
 
     canvas {
-      width: 100%;
-      height: 100%;
-      border-radius: 12px;
-      background-color: #000;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      display: block;
     }
 
     #startBtn {
       position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
       z-index: 10;
-      padding: 12px 24px;
-      font-size: 1rem;
+      padding: 16px 32px;
+      font-size: 1.1rem;
       font-weight: bold;
       color: #fff;
       background-color: #007bff;
       border: none;
-      border-radius: 8px;
+      border-radius: 30px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
       cursor: pointer;
     }
 
     #errorLog {
       position: absolute;
-      bottom: 10px;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
       color: #ff5555;
       font-size: 0.9rem;
       text-align: center;
-      padding: 0 10px;
+      width: 90%;
+      z-index: 10;
     }
   </style>
 
@@ -73,14 +65,9 @@
 </head>
 <body>
 
-  <h1>Mapeamento de Mão (Câmera Traseira)</h1>
-  
-  <div class="container">
-    <button id="startBtn">Iniciar Câmera</button>
-    <video id="webcam" playsinline></video>
-    <canvas id="output_canvas"></canvas>
-  </div>
-
+  <button id="startBtn">Iniciar Câmera</button>
+  <video id="webcam" playsinline></video>
+  <canvas id="output_canvas"></canvas>
   <div id="errorLog"></div>
 
   <script>
@@ -102,13 +89,17 @@
     });
 
     hands.onResults((results) => {
-      canvasElement.width = videoElement.videoWidth;
-      canvasElement.height = videoElement.videoHeight;
+      // Ajusta o tamanho interno do canvas para a resolução da janela
+      canvasElement.width = window.innerWidth;
+      canvasElement.height = window.innerHeight;
 
       canvasCtx.save();
       canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+      // Desenha o feed da câmera cobrindo toda a dimensão do canvas
       canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
+      // Desenha o esqueleto das mãos
       if (results.multiHandLandmarks) {
         for (const landmarks of results.multiHandLandmarks) {
           
@@ -120,7 +111,7 @@
             canvasCtx.moveTo(from.x * canvasElement.width, from.y * canvasElement.height);
             canvasCtx.lineTo(to.x * canvasElement.width, to.y * canvasElement.height);
             canvasCtx.strokeStyle = '#00FF88';
-            canvasCtx.lineWidth = 3;
+            canvasCtx.lineWidth = 4;
             canvasCtx.stroke();
           }
 
@@ -129,7 +120,7 @@
             const y = landmark.y * canvasElement.height;
 
             canvasCtx.beginPath();
-            canvasCtx.arc(x, y, 5, 0, 2 * Math.PI);
+            canvasCtx.arc(x, y, 6, 0, 2 * Math.PI);
             canvasCtx.fillStyle = '#FF0055';
             canvasCtx.fill();
           }
@@ -146,8 +137,8 @@
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: { ideal: "environment" },
-            width: { ideal: 640 },
-            height: { ideal: 480 }
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
           }
         });
         
@@ -164,12 +155,18 @@
 
       } catch (err) {
         console.error(err);
-        errorLog.innerText = "Erro ao acessar a câmera: " + err.message + ". Certifique-se de permitir o acesso à câmera.";
+        errorLog.innerText = "Erro ao acessar a câmera: " + err.message;
         startBtn.style.display = 'block';
       }
     }
 
     startBtn.addEventListener('click', startCamera);
+
+    // Reajusta o tamanho do canvas se a tela for redimensionada ou girada
+    window.addEventListener('resize', () => {
+      canvasElement.width = window.innerWidth;
+      canvasElement.height = window.innerHeight;
+    });
   </script>
 </body>
 </html>
