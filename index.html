@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rastreamento de Mão - Confirmação de 5 Segundos</title>
+  <title>Rastreamento de Mão - Tolerância Ajustada</title>
   <style>
     * {
       box-sizing: border-box;
@@ -63,12 +63,12 @@
       z-index: 10;
     }
 
-    /* Animação do progresso de hold (segurar o gesto por 5s) */
+    /* Animação do progresso de hold (5s) */
     .hold-container {
       position: absolute;
       z-index: 5;
-      width: 60px;
-      height: 60px;
+      width: 65px;
+      height: 65px;
       transform: translate(-50%, -50%);
       pointer-events: none;
     }
@@ -85,8 +85,8 @@
     }
 
     .hold-inner {
-      width: 42px;
-      height: 42px;
+      width: 45px;
+      height: 45px;
       background-color: #ff6600;
       border-radius: 50%;
       border: 2px solid #fff;
@@ -133,10 +133,10 @@
 
     let buttonCount = 0;
     
-    // Variáveis para controlar o tempo segurado
+    // Controle de tempo de carregamento (5s)
     let holdStartTime = null;
     let holdContainerEl = null;
-    const REQUIRED_HOLD_TIME = 5000; // 5000ms = 5 segundos
+    const REQUIRED_HOLD_TIME = 5000; 
 
     const hands = new Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
@@ -156,7 +156,7 @@
       canvasCtx.save();
       canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-      // Desenha o feed da câmera
+      // Desenha o vídeo da câmera
       canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
       let gestureDetectedThisFrame = false;
@@ -166,7 +166,7 @@
       if (results.multiHandLandmarks) {
         for (const landmarks of results.multiHandLandmarks) {
           
-          // Desenha os ossos em BRANCO
+          // Desenha as conexões em BRANCO
           for (const connection of HAND_CONNECTIONS) {
             const from = landmarks[connection[0]];
             const to = landmarks[connection[1]];
@@ -190,7 +190,7 @@
             canvasCtx.fill();
           }
 
-          // 1. Verifica se os 4 dedos principais estão esticados
+          // 1. Verifica se os 4 dedos estão esticados para cima
           const isIndexOpen = landmarks[8].y < landmarks[6].y;
           const isMiddleOpen = landmarks[12].y < landmarks[10].y;
           const isRingOpen = landmarks[16].y < landmarks[14].y;
@@ -198,12 +198,14 @@
 
           const allFingersExtended = isIndexOpen && isMiddleOpen && isRingOpen && isPinkyOpen;
 
-          // 2. Distâncias entre as pontas dos dedos vizinhos
-          const distIndexMiddle = Math.hypot(landmarks[8].x - landmarks[12].x, landmarks[8].y - landmarks[12].y);
-          const distMiddleRing  = Math.hypot(landmarks[12].x - landmarks[16].x, landmarks[12].y - landmarks[16].y);
-          const distRingPinky   = Math.hypot(landmarks[16].x - landmarks[20].x, landmarks[16].y - landmarks[20].y);
+          // 2. Medição da distância entre dedos com TOLERÂNCIA MAIOR
+          // Compara os pontos intermediários (nós do meio) que são mais estáveis
+          const distIndexMiddle = Math.hypot(landmarks[7].x - landmarks[11].x, landmarks[7].y - landmarks[11].y);
+          const distMiddleRing  = Math.hypot(landmarks[11].x - landmarks[15].x, landmarks[11].y - landmarks[15].y);
+          const distRingPinky   = Math.hypot(landmarks[15].x - landmarks[19].x, landmarks[15].y - landmarks[19].y);
 
-          const MAX_GAP = 0.045; 
+          // Folga ampliada (0.09 ao invés de 0.045) para detectar a mão normal sem precisar espremer
+          const MAX_GAP = 0.09; 
           const fingersClosedTogether = (distIndexMiddle < MAX_GAP) && (distMiddleRing < MAX_GAP) && (distRingPinky < MAX_GAP);
 
           if (allFingersExtended && fingersClosedTogether) {
@@ -215,16 +217,14 @@
         }
       }
 
-      // --- LÓGICA DE ESPERA DOS 5 SEGUNDOS ---
+      // --- LÓGICA DO TEMPORIZADOR DE 5 SEGUNDOS ---
       if (gestureDetectedThisFrame) {
         const now = Date.now();
 
         if (!holdStartTime) {
-          // Começa a contar os 5 segundos
           holdStartTime = now;
           createHoldUI(targetX, targetY);
         } else {
-          // Atualiza posição do anel visual junto com a mão
           updateHoldUIPosition(targetX, targetY);
 
           const elapsedTime = now - holdStartTime;
@@ -232,7 +232,6 @@
           
           updateHoldUIProgress(progressDeg);
 
-          // Se segurou por 5 segundos seguidos
           if (elapsedTime >= REQUIRED_HOLD_TIME) {
             removeHoldUI();
             createButtonAt(targetX, targetY);
@@ -240,7 +239,6 @@
           }
         }
       } else {
-        // Se desfizer o gesto antes dos 5s, reseta a contagem e remove a UI
         if (holdStartTime) {
           removeHoldUI();
           holdStartTime = null;
@@ -250,7 +248,6 @@
       canvasCtx.restore();
     });
 
-    // Função para criar o indicador visual de progresso
     function createHoldUI(x, y) {
       removeHoldUI();
 
@@ -347,4 +344,3 @@
   </script>
 </body>
 </html>
-
