@@ -29,9 +29,11 @@
       width: 100%;
       max-width: 640px;
       aspect-ratio: 4 / 3;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
 
-    /* O vídeo fica oculto; desenhamos tudo no Canvas */
     video {
       display: none;
     }
@@ -41,7 +43,28 @@
       height: 100%;
       border-radius: 12px;
       background-color: #000;
-      transform: scaleX(1); /* Não espelhado para câmera traseira */
+    }
+
+    #startBtn {
+      position: absolute;
+      z-index: 10;
+      padding: 12px 24px;
+      font-size: 1rem;
+      font-weight: bold;
+      color: #fff;
+      background-color: #007bff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    #errorLog {
+      position: absolute;
+      bottom: 10px;
+      color: #ff5555;
+      font-size: 0.9rem;
+      text-align: center;
+      padding: 0 10px;
     }
   </style>
 
@@ -53,16 +76,20 @@
   <h1>Mapeamento de Mão (Câmera Traseira)</h1>
   
   <div class="container">
+    <button id="startBtn">Iniciar Câmera</button>
     <video id="webcam" playsinline></video>
     <canvas id="output_canvas"></canvas>
   </div>
+
+  <div id="errorLog"></div>
 
   <script>
     const videoElement = document.getElementById('webcam');
     const canvasElement = document.getElementById('output_canvas');
     const canvasCtx = canvasElement.getContext('2d');
+    const startBtn = document.getElementById('startBtn');
+    const errorLog = document.getElementById('errorLog');
 
-    // Configuração do detector de mãos do MediaPipe
     const hands = new Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
@@ -74,23 +101,17 @@
       minTrackingConfidence: 0.5
     });
 
-    // Função executada a cada frame processado
     hands.onResults((results) => {
-      // Ajusta o tamanho do canvas para o tamanho do vídeo
       canvasElement.width = videoElement.videoWidth;
       canvasElement.height = videoElement.videoHeight;
 
       canvasCtx.save();
       canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-
-      // Desenha a imagem da câmara no fundo
       canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
-      // Se identificar mãos, desenha os pontos e conexões
       if (results.multiHandLandmarks) {
         for (const landmarks of results.multiHandLandmarks) {
           
-          // Desenhar conexões entre os pontos da mão
           for (const connection of HAND_CONNECTIONS) {
             const from = landmarks[connection[0]];
             const to = landmarks[connection[1]];
@@ -98,19 +119,18 @@
             canvasCtx.beginPath();
             canvasCtx.moveTo(from.x * canvasElement.width, from.y * canvasElement.height);
             canvasCtx.lineTo(to.x * canvasElement.width, to.y * canvasElement.height);
-            canvasCtx.strokeStyle = '#00FF88'; // Cor estilo Quest (Verde Neon)
+            canvasCtx.strokeStyle = '#00FF88';
             canvasCtx.lineWidth = 3;
             canvasCtx.stroke();
           }
 
-          // Desenhar os pontos das articulações
           for (const landmark of landmarks) {
             const x = landmark.x * canvasElement.width;
             const y = landmark.y * canvasElement.height;
 
             canvasCtx.beginPath();
             canvasCtx.arc(x, y, 5, 0, 2 * Math.PI);
-            canvasCtx.fillStyle = '#FF0055'; // Cor dos pontos
+            canvasCtx.fillStyle = '#FF0055';
             canvasCtx.fill();
           }
         }
@@ -118,18 +138,22 @@
       canvasCtx.restore();
     });
 
-    // Configuração para utilizar a CÂMERA TRASEIRA ('environment')
-    async function initCamera() {
+    async function startCamera() {
+      startBtn.style.display = 'none';
+      errorLog.innerText = '';
+
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            facingMode: { exact: "environment" } // Força o uso da câmera traseira
+            facingMode: { ideal: "environment" },
+            width: { ideal: 640 },
+            height: { ideal: 480 }
           }
         });
+        
         videoElement.srcObject = stream;
         await videoElement.play();
 
-        // Loop de processamento de frames
         const processFrame = async () => {
           if (!videoElement.paused && !videoElement.ended) {
             await hands.send({ image: videoElement });
@@ -139,28 +163,13 @@
         processFrame();
 
       } catch (err) {
-        console.warn("Não foi possível acessar a câmera traseira exata. Tentando modo padrão...", err);
-        // Fallback caso o dispositivo não suporte a regra 'exact' (ex: notebooks)
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "environment" }
-          });
-          videoElement.srcObject = stream;
-          await videoElement.play();
-          
-          const processFrame = async () => {
-            await hands.send({ image: videoElement });
-            requestAnimationFrame(processFrame);
-          };
-          processFrame();
-        } catch (error) {
-          alert("Erro ao acessar a câmera: " + error.message);
-        }
+        console.error(err);
+        errorLog.innerText = "Erro ao acessar a câmera: " + err.message + ". Certifique-se de permitir o acesso à câmera.";
+        startBtn.style.display = 'block';
       }
     }
 
-    initCamera();
+    startBtn.addEventListener('click', startCamera);
   </script>
 </body>
 </html>
-
