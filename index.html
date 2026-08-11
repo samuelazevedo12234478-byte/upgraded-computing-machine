@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Meta Quest OS - 3D Spatial Gyroscope</title>
+  <title>Meta Quest Spatial OS - A-Frame Edition</title>
+  
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
   <style>
     * {
       box-sizing: border-box;
@@ -16,171 +22,37 @@
       width: 100vw;
       height: 100vh;
       overflow: hidden;
-      background-color: #000;
+      background: #000;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      /* Define a perspectiva tridimensional do ambiente VR/AR */
-      perspective: 1200px;
     }
 
-    video {
-      display: none;
-    }
+    /* Esconde a interface de VR padrão do A-Frame */
+    .a-enter-vr { display: none !important; }
 
-    /* Canvas da Câmera (Fundo) */
-    #bg_canvas {
-      width: 100vw;
-      height: 100vh;
-      object-fit: cover;
-      position: absolute;
-      top: 0;
-      left: 0;
-      z-index: 1;
-      pointer-events: none;
-      transform-style: preserve-3d;
-    }
-
-    /* Wrapper 3D para as Janelas flutuarem */
-    #spatial-scene {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      z-index: 10;
-      pointer-events: none;
-      transform-style: preserve-3d;
-      transition: transform 0.1s ease-out;
-    }
-
-    #windows-container {
-      width: 100%;
-      height: 100%;
-      position: absolute;
-      transform-style: preserve-3d;
-    }
-
-    /* Dock com efeito 3D flutuante */
-    #main-dock {
-      position: fixed;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%) translateZ(40px) rotateX(5deg);
-      padding: 10px 20px;
-      background: rgba(15, 23, 42, 0.92);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      border-radius: 40px;
-      backdrop-filter: blur(20px);
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.9);
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      z-index: 50;
-      pointer-events: auto;
-      transform-style: preserve-3d;
-    }
-
-    .dock-btn {
-      padding: 10px 18px;
-      background: rgba(255, 255, 255, 0.12);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      border-radius: 20px;
-      color: #ffffff;
-      font-weight: 600;
-      font-size: 0.85rem;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: all 0.15s ease;
-    }
-
-    .dock-btn.hovered {
-      background: rgba(56, 189, 248, 0.5);
-      border-color: #38bdf8;
-      transform: scale(1.06) translateZ(10px);
-    }
-
-    /* Janelas com Profundidade Spacial */
-    .app-window {
-      position: absolute;
-      width: 88vw;
-      max-width: 480px;
-      height: 320px;
-      background: rgba(20, 25, 35, 0.95);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      border-radius: 18px;
-      backdrop-filter: blur(24px);
-      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), 0 0 20px rgba(56, 189, 248, 0.2);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      pointer-events: auto;
-      /* Eleva a janela no espaço 3D (profundidade) */
-      transform: translateZ(60px);
-      transform-style: preserve-3d;
-    }
-
-    .window-header {
-      height: 38px;
-      background: rgba(255, 255, 255, 0.08);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 14px;
-      color: #f1f5f9;
-      font-size: 0.85rem;
-      font-weight: 600;
-    }
-
-    .close-btn {
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      background: #ef4444;
-      border: none;
-      color: #fff;
-      font-weight: bold;
-      font-size: 0.75rem;
-      cursor: pointer;
-    }
-
-    .window-body {
-      flex: 1;
-      width: 100%;
-      height: 100%;
-      border: none;
-      background: #fff;
-    }
-
-    .window-grab-bar {
-      height: 20px;
-      background: rgba(15, 23, 42, 0.98);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .grab-pill {
-      width: 120px;
-      height: 5px;
-      background: rgba(255, 255, 255, 0.4);
-      border-radius: 10px;
-    }
-
-    .grab-pill.hovered {
-      background: #38bdf8;
-      box-shadow: 0 0 12px #38bdf8;
-    }
-
-    /* Canvas do Laser/Mão (Sempre na Frente) */
+    /* Canvas para a Mão e Laser (Sobreposto) */
     #hand_canvas {
-      width: 100vw;
-      height: 100vh;
-      object-fit: cover;
       position: absolute;
       top: 0;
       left: 0;
+      width: 100vw;
+      height: 100vh;
       z-index: 100;
       pointer-events: none;
+    }
+
+    /* Interface da Janela 3D (Substitui os iframes para compatibilidade 3D) */
+    .spatial-card {
+      width: 400px;
+      height: 260px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 2px solid rgba(56, 189, 248, 0.5);
+      border-radius: 20px;
+      color: #fff;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      backdrop-filter: blur(10px);
     }
 
     #startBtn {
@@ -214,101 +86,50 @@
       border: 1px solid rgba(255, 255, 255, 0.1);
       white-space: nowrap;
     }
-  </style>
 
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    video { display: none; }
+  </style>
 </head>
 <body>
 
-  <button id="startBtn">Iniciar Meta Quest AR Spatial</button>
+  <button id="startBtn">Iniciar AR Espacial 3D</button>
+  <div id="statusLog">A-Frame Spatial 3D Pronto!</div>
+  
   <video id="webcam" playsinline></video>
-
-  <canvas id="bg_canvas"></canvas>
-
-  <div id="spatial-scene">
-    <div id="windows-container"></div>
-    <div id="main-dock">
-      <div class="dock-btn" data-app="Google Busca" data-url="https://html.duckduckgo.com/html/">🌐 Busca</div>
-      <div class="dock-btn" data-app="Wikipédia" data-url="https://pt.m.wikipedia.org">📚 Wikipédia</div>
-    </div>
-  </div>
-
   <canvas id="hand_canvas"></canvas>
 
-  <div id="statusLog">Giroscópio Spatial 3D Pronto!</div>
+  <a-scene embedded vr-mode-ui="enabled: false">
+    
+    <a-entity id="main-camera" camera look-controls="magicWindowTrackingEnabled: true"></a-entity>
+
+    <a-entity id="spatial-world">
+      
+      <a-plane id="window-wiki" position="0 0 -2" width="1.6" height="1" material="shader: flat; color: #0f172a; opacity: 0.9; transparent: true">
+        <a-text value="Wikipedia AR" position="-0.7 0.35 0.01" scale="0.5 0.5 0.5" color="#38bdf8"></a-text>
+        <a-text value="Seja bem-vindo ao espaco 3D!\nEsta janela esta flutuando no ambiente." position="-0.7 0.1 0.01" scale="0.3 0.3 0.3" color="#ffffff"></a-text>
+      </a-plane>
+
+      <a-plane id="dock-menu" position="0 -0.8 -1.5" width="1.2" height="0.3" material="shader: flat; color: #1e293b; opacity: 0.9; transparent: true">
+        <a-text value="[ Busca ]" position="-0.4 0 0.01" scale="0.4 0.4 0.4" color="#38bdf8"></a-text>
+        <a-text value="[ Wikipedia ]" position="0.1 0 0.01" scale="0.4 0.4 0.4" color="#22c55e"></a-text>
+      </a-plane>
+
+    </a-entity>
+
+  </a-scene>
 
   <script>
     const videoElement = document.getElementById('webcam');
-    const bgCanvas = document.getElementById('bg_canvas');
-    const bgCtx = bgCanvas.getContext('2d');
     const handCanvas = document.getElementById('hand_canvas');
     const handCtx = handCanvas.getContext('2d');
-
     const startBtn = document.getElementById('startBtn');
     const statusLog = document.getElementById('statusLog');
-    const spatialScene = document.getElementById('spatial-scene');
-    const windowsContainer = document.getElementById('windows-container');
-    const dockButtons = document.querySelectorAll('.dock-btn');
-
-    let wasPinching = false;
-    let activeDraggingWindow = null;
-    let isContentScrolling = false;
-    
-    let pinchStartTime = 0;
-    let pinchStartX = 0, pinchStartY = 0;
-    let lastPinchY = 0;
-    let dragOffsetX = 0, dragOffsetY = 0;
 
     let smoothPointerX = window.innerWidth / 2;
     let smoothPointerY = window.innerHeight / 2;
+    let isPinching = false;
 
-    // VARIÁVEIS DE GIROSCÓPIO & PROFUNDIDADE
-    let baseBeta = null;
-    let baseGamma = null;
-    let gyroX = 0, gyroY = 0;
-    let targetGyroX = 0, targetGyroY = 0;
-
-    function handleOrientation(event) {
-      if (baseBeta === null) {
-        baseBeta = event.beta;
-        baseGamma = event.gamma;
-      }
-
-      // Calcula o deslocamento do celular
-      let deltaBeta = event.beta - baseBeta;   // Inclinação Frente/Trás
-      let deltaGamma = event.gamma - baseGamma; // Inclinação Esquerda/Direita
-
-      // Limita os ângulos para manter estabilidade
-      targetGyroX = Math.max(-25, Math.min(25, deltaBeta)) * 0.6;
-      targetGyroY = Math.max(-25, Math.min(25, deltaGamma)) * 0.6;
-    }
-
-    // Suavização do Giroscópio no Loop de Animação
-    function updateGyroEffect() {
-      gyroX += (targetGyroX - gyroX) * 0.1;
-      gyroY += (targetGyroY - gyroY) * 0.1;
-
-      // Aplica a rotação tridimensional na cena espacial
-      spatialScene.style.transform = `rotateX(${-gyroX}deg) rotateY(${gyroY}deg) translateZ(20px)`;
-      requestAnimationFrame(updateGyroEffect);
-    }
-
-    async function requestGyroPermission() {
-      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-        try {
-          const permissionState = await DeviceOrientationEvent.requestPermission();
-          if (permissionState === 'granted') {
-            window.addEventListener('deviceorientation', handleOrientation);
-          }
-        } catch (e) {
-          console.log("Erro de permissão no giroscópio:", e);
-        }
-      } else {
-        window.addEventListener('deviceorientation', handleOrientation);
-      }
-    }
-
+    // Configuração do MediaPipe Hands
     const hands = new Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
@@ -321,22 +142,16 @@
     });
 
     hands.onResults((results) => {
-      bgCanvas.width = handCanvas.width = window.innerWidth;
-      bgCanvas.height = handCanvas.height = window.innerHeight;
-
-      bgCtx.save();
-      bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
-      bgCtx.drawImage(results.image, 0, 0, bgCanvas.width, bgCanvas.height);
-      bgCtx.restore();
+      handCanvas.width = window.innerWidth;
+      handCanvas.height = window.innerHeight;
 
       handCtx.save();
       handCtx.clearRect(0, 0, handCanvas.width, handCanvas.height);
 
-      let isHoveringAny = false;
-
       if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
         const landmarks = results.multiHandLandmarks[0];
 
+        // 1. Desenha esqueleto da Mão
         drawHandMesh(landmarks);
 
         const thumbTip = landmarks[4];
@@ -344,7 +159,7 @@
         const indexBase = landmarks[5];
         const middleTip = landmarks[12];
 
-        // Feixe Laser
+        // 2. Calcula Mira do Laser
         const originX = indexTip.x * handCanvas.width;
         const originY = indexTip.y * handCanvas.height;
         const dirX = (indexTip.x - indexBase.x) * 3.5;
@@ -356,138 +171,17 @@
         smoothPointerX += (targetX - smoothPointerX) * 0.25;
         smoothPointerY += (targetY - smoothPointerY) * 0.25;
 
-        // Pinça
+        // 3. Detecção de Pinça
         const palmWidth = Math.hypot(landmarks[5].x - landmarks[17].x, landmarks[5].y - landmarks[17].y);
         const pinchDistance = Math.hypot(thumbTip.x - middleTip.x, thumbTip.y - middleTip.y);
-        const isPinching = (pinchDistance / palmWidth) < 0.32;
+        isPinching = (pinchDistance / palmWidth) < 0.32;
 
-        const now = Date.now();
-
-        if (isPinching && !wasPinching) {
-          pinchStartTime = now;
-          pinchStartX = smoothPointerX;
-          pinchStartY = smoothPointerY;
-          lastPinchY = smoothPointerY;
-        }
-
-        const pinchDuration = isPinching ? (now - pinchStartTime) : 0;
-        const movedDistance = Math.hypot(smoothPointerX - pinchStartX, smoothPointerY - pinchStartY);
-
-        // Interação Dock
-        if (!activeDraggingWindow && !isContentScrolling) {
-          dockButtons.forEach(btn => {
-            const rect = btn.getBoundingClientRect();
-            if (smoothPointerX >= rect.left && smoothPointerX <= rect.right &&
-                smoothPointerY >= rect.top && smoothPointerY <= rect.bottom) {
-              isHoveringAny = true;
-              btn.classList.add('hovered');
-              if (isPinching && !wasPinching) {
-                createAppWindow(btn.dataset.app, btn.dataset.url);
-              }
-            } else {
-              btn.classList.remove('hovered');
-            }
-          });
-        }
-
-        // Interação Janelas
-        const allWindows = document.querySelectorAll('.app-window');
-        allWindows.forEach(win => {
-          const iframe = win.querySelector('.window-body');
-          const grabPill = win.querySelector('.grab-pill');
-          const closeBtn = win.querySelector('.close-btn');
-
-          if (closeBtn) {
-            const cRect = closeBtn.getBoundingClientRect();
-            if (smoothPointerX >= cRect.left && smoothPointerX <= cRect.right &&
-                smoothPointerY >= cRect.top && smoothPointerY <= cRect.bottom) {
-              isHoveringAny = true;
-              if (isPinching && !wasPinching) win.remove();
-            }
-          }
-
-          if (grabPill) {
-            const gRect = grabPill.getBoundingClientRect();
-            if (smoothPointerX >= gRect.left && smoothPointerX <= gRect.right &&
-                smoothPointerY >= gRect.top && smoothPointerY <= gRect.bottom) {
-              grabPill.classList.add('hovered');
-              isHoveringAny = true;
-
-              if (isPinching && !wasPinching && !activeDraggingWindow) {
-                activeDraggingWindow = win;
-                const winRect = win.getBoundingClientRect();
-                dragOffsetX = winRect.left - smoothPointerX;
-                dragOffsetY = winRect.top - smoothPointerY;
-              }
-            } else if (activeDraggingWindow !== win) {
-              grabPill.classList.remove('hovered');
-            }
-          }
-
-          // Scroll na Janela
-          const wRect = win.getBoundingClientRect();
-          const isInsideBody = smoothPointerX >= wRect.left && smoothPointerX <= wRect.right &&
-                               smoothPointerY >= (wRect.top + 38) && smoothPointerY <= (wRect.bottom - 20);
-
-          if (isInsideBody && !activeDraggingWindow) {
-            isHoveringAny = true;
-
-            if (isPinching && (pinchDuration > 300 || movedDistance > 15)) {
-              isContentScrolling = true;
-              const deltaY = lastPinchY - smoothPointerY;
-              try {
-                iframe.contentWindow.scrollBy(0, deltaY * 2.5);
-              } catch(e) {}
-              lastPinchY = smoothPointerY;
-            }
-          }
-        });
-
-        if (activeDraggingWindow) {
-          if (isPinching) {
-            isHoveringAny = true;
-            activeDraggingWindow.style.left = `${smoothPointerX + dragOffsetX}px`;
-            activeDraggingWindow.style.top = `${smoothPointerY + dragOffsetY}px`;
-          } else {
-            activeDraggingWindow = null;
-          }
-        }
-
-        if (!isPinching) {
-          isContentScrolling = false;
-        }
-
-        drawLaserRay(originX, originY, smoothPointerX, smoothPointerY, isPinching, isHoveringAny);
-        wasPinching = isPinching;
-
-      } else {
-        activeDraggingWindow = null;
-        isContentScrolling = false;
-        wasPinching = false;
+        // Desenha o Feixe
+        drawLaserRay(originX, originY, smoothPointerX, smoothPointerY, isPinching);
       }
 
       handCtx.restore();
     });
-
-    function createAppWindow(appName, url) {
-      const windowEl = document.createElement('div');
-      windowEl.className = 'app-window';
-      windowEl.style.left = `${Math.max(10, (window.innerWidth - 480) / 2)}px`;
-      windowEl.style.top = `70px`;
-
-      windowEl.innerHTML = `
-        <div class="window-header">
-          <span>${appName}</span>
-          <button class="close-btn">✕</button>
-        </div>
-        <iframe class="window-body" src="${url}"></iframe>
-        <div class="window-grab-bar">
-          <div class="grab-pill"></div>
-        </div>
-      `;
-
-      windowsContainer.appendChild(windowEl);
-    }
 
     function drawHandMesh(landmarks) {
       for (const connection of HAND_CONNECTIONS) {
@@ -500,43 +194,42 @@
         handCtx.lineWidth = 3;
         handCtx.stroke();
       }
-      for (const landmark of landmarks) {
-        handCtx.beginPath();
-        handCtx.arc(landmark.x * handCanvas.width, landmark.y * handCanvas.height, 4.5, 0, 2 * Math.PI);
-        handCtx.fillStyle = '#38bdf8';
-        handCtx.fill();
-      }
     }
 
-    function drawLaserRay(startX, startY, endX, endY, isPinching, isHovering) {
-      let colorCore = isPinching ? '#22c55e' : (isHovering ? '#38bdf8' : '#ffffff');
+    function drawLaserRay(startX, startY, endX, endY, pinching) {
+      let colorCore = pinching ? '#22c55e' : '#38bdf8';
       
       handCtx.beginPath();
       handCtx.moveTo(startX, startY);
       handCtx.lineTo(endX, endY);
       handCtx.strokeStyle = colorCore;
-      handCtx.lineWidth = isPinching ? 6 : 3;
+      handCtx.lineWidth = pinching ? 6 : 3;
       handCtx.stroke();
 
       handCtx.beginPath();
-      handCtx.arc(endX, endY, isPinching ? 6 : 9, 0, 2 * Math.PI);
+      handCtx.arc(endX, endY, pinching ? 6 : 9, 0, 2 * Math.PI);
       handCtx.fillStyle = colorCore;
       handCtx.fill();
     }
 
-    async function startCamera() {
+    async function startApp() {
       startBtn.style.display = 'none';
-      await requestGyroPermission();
-      updateGyroEffect();
 
-      createAppWindow('Wikipédia', 'https://pt.m.wikipedia.org');
+      // Solicita permissão para o Giroscópio
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        try {
+          await DeviceOrientationEvent.requestPermission();
+        } catch(e) {}
+      }
 
+      // Inicia a Câmera para o Rastreamento
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { ideal: "environment" } }
         });
         videoElement.srcObject = stream;
         await videoElement.play();
+
         const processFrame = async () => {
           if (!videoElement.paused && !videoElement.ended) {
             await hands.send({ image: videoElement });
@@ -544,12 +237,13 @@
           requestAnimationFrame(processFrame);
         };
         processFrame();
+        statusLog.innerText = "Modo Espacial Ativo! Move o celular e use a mão.";
       } catch (err) {
-        statusLog.innerText = "Erro na câmera: " + err.message;
+        statusLog.innerText = "Erro ao abrir câmera: " + err.message;
       }
     }
 
-    startBtn.addEventListener('click', startCamera);
+    startBtn.addEventListener('click', startApp);
   </script>
 </body>
 </html>
