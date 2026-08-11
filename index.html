@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Meta Quest Spatial OS - Google & YouTube</title>
+  <title>Meta Quest Spatial OS - AR Gun Game</title>
   
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   
@@ -28,18 +28,35 @@
 
     .a-enter-vr { display: none !important; }
 
-    /* Canvas do Laser e da Mão (Fica por cima de tudo) */
+    #webcam {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      z-index: 0;
+    }
+
+    a-scene {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 10;
+    }
+
     #hand_canvas {
       position: absolute;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
-      z-index: 100;
+      z-index: 20;
       pointer-events: none;
     }
 
-    /* Botão Inicial */
     #startBtn {
       position: absolute;
       top: 50%;
@@ -57,39 +74,35 @@
       box-shadow: 0 10px 30px rgba(2, 132, 199, 0.5);
     }
 
-    /* Botões da Interface */
     #controls-container {
       position: absolute;
-      bottom: 20px;
+      bottom: 30px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 200;
       display: flex;
-      gap: 12px;
+      gap: 10px;
+      background: rgba(15, 23, 42, 0.75);
+      padding: 10px 18px;
+      border-radius: 40px;
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
     }
 
     .ui-btn {
-      padding: 12px 22px;
-      font-size: 0.9rem;
+      padding: 10px 18px;
+      font-size: 0.85rem;
       font-weight: bold;
       color: #fff;
-      background: rgba(15, 23, 42, 0.88);
-      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(30, 41, 59, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 30px;
-      backdrop-filter: blur(10px);
       cursor: pointer;
-      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
     }
 
-    .ui-btn.youtube {
-      background: rgba(220, 38, 38, 0.85);
-      border-color: #f87171;
-    }
-
-    .ui-btn.google {
-      background: rgba(2, 132, 199, 0.85);
-      border-color: #38bdf8;
-    }
+    .ui-btn.youtube { background: rgba(220, 38, 38, 0.85); }
+    .ui-btn.google { background: rgba(2, 132, 199, 0.85); }
+    .ui-btn.games { background: rgba(16, 185, 129, 0.85); }
 
     #statusLog {
       position: absolute;
@@ -106,47 +119,92 @@
       white-space: nowrap;
     }
 
-    video { display: none; }
+    .ar-window-container {
+      position: absolute;
+      z-index: 50;
+      display: none;
+      background: #0f172a;
+      border: 2px solid #38bdf8;
+      border-radius: 16px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+      overflow: hidden;
+      flex-direction: column;
+    }
+
+    .ar-window-header {
+      height: 36px;
+      background: #1e293b;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 12px;
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: bold;
+    }
+
+    .close-btn {
+      background: #ef4444;
+      color: #fff;
+      border: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    iframe { width: 100%; height: calc(100% - 36px); border: none; background: #fff; }
   </style>
 </head>
 <body>
 
-  <button id="startBtn">Iniciar AR (Ativar Câmera)</button>
+  <button id="startBtn">Iniciar Meta Quest AR</button>
   
   <div id="controls-container" style="display: none;">
     <button class="ui-btn google" id="btnOpenGoogle">🔍 Google</button>
     <button class="ui-btn youtube" id="btnOpenYT">▶️ YouTube</button>
+    <button class="ui-btn games" id="btnStartGame">🎮 Jogos</button>
     <button class="ui-btn" id="recenterUIBtn">🎯 Recentralizar</button>
   </div>
 
-  <div id="statusLog">Meta Quest AR - Controle por Mãos</div>
+  <div id="statusLog">Sistema Espacial Pronto!</div>
   
-  <video id="webcam" playsinline></video>
+  <video id="webcam" playsinline autoplay muted></video>
   <canvas id="hand_canvas"></canvas>
 
-  <a-scene embedded vr-mode-ui="enabled: false">
-    
+  <div id="win-google" class="ar-window-container" style="width: 320px; height: 350px; top: 15%; left: 5%;">
+    <div class="ar-window-header">
+      <span>🔍 Google Search</span>
+      <button class="close-btn" onclick="closeWindow('win-google')">✕</button>
+    </div>
+    <iframe src="https://www.bing.com"></iframe>
+  </div>
+
+  <div id="win-youtube" class="ar-window-container" style="width: 320px; height: 240px; top: 15%; right: 5%;">
+    <div class="ar-window-header">
+      <span>▶️ YouTube VR</span>
+      <button class="close-btn" onclick="closeWindow('win-youtube')">✕</button>
+    </div>
+    <iframe src="https://www.youtube.com/embed?listType=playlist&list=PLrEnWoR738-qXaS-Xp93LwB5Lp8Y"></iframe>
+  </div>
+
+  <a-scene embedded vr-mode-ui="enabled: false" renderer="alpha: true; antialias: true;">
     <a-entity id="main-camera" camera look-controls="magicWindowTrackingEnabled: true"></a-entity>
 
-    <a-entity id="spatial-world">
-      
-      <a-plane id="window-google" position="-1 0.2 -2" width="1.5" height="1" material="shader: flat; color: #ffffff; opacity: 0.95; transparent: true">
-        <a-text value="Google" position="-0.3 0.3 0.01" scale="0.8 0.8 0.8" color="#4285F4"></a-text>
-        <a-plane position="0 -0.05 0.01" width="1.2" height="0.15" material="color: #f1f3f4; shader: flat;">
-          <a-text value="Pesquisar no Google..." position="-0.5 0 0.01" scale="0.3 0.3 0.3" color="#5f6368"></a-text>
-        </a-plane>
-        <a-text value="Clique no botao abaixo para abrir" position="-0.5 -0.3 0.01" scale="0.3 0.3 0.3" color="#1a0dab"></a-text>
-      </a-plane>
-
-      <a-plane id="window-youtube" position="1 0.2 -2" width="1.5" height="1" material="shader: flat; color: #0f0f0f; opacity: 0.95; transparent: true">
-        <a-text value="YouTube" position="-0.35 0.3 0.01" scale="0.8 0.8 0.8" color="#FF0000"></a-text>
-        <a-plane position="0 -0.05 0.01" width="1.3" height="0.5" material="color: #212121; shader: flat;">
-          <a-text value="▶️ Clique no botao abaixo para abrir" position="-0.55 0 0.01" scale="0.3 0.3 0.3" color="#ffffff"></a-text>
-        </a-plane>
-      </a-plane>
-
+    <a-entity id="gun-model" position="0 -0.2 -0.8" visible="false">
+      <a-box position="0 0 0" width="0.08" height="0.12" depth="0.3" material="color: #1e293b; metalness: 0.8; roughness: 0.2;"></a-box>
+      <a-cylinder position="0 0.03 -0.2" radius="0.025" height="0.25" rotation="90 0 0" material="color: #0284c7; metalness: 0.9;"></a-cylinder>
+      <a-box position="0 -0.09 0.05" width="0.06" height="0.12" depth="0.08" rotation="-20 0 0" material="color: #0f172a;"></a-box>
+      <a-sphere position="0 0.07 -0.25" radius="0.015" material="color: #ef4444; shader: flat;"></a-sphere>
     </a-entity>
 
+    <a-entity id="target-monster" position="0 0.2 -2" visible="false">
+      <a-sphere radius="0.2" material="color: #22c55e; roughness: 0.3;"></a-sphere>
+      <a-sphere position="-0.07 0.05 0.16" radius="0.04" material="color: #ffffff;"></a-sphere>
+      <a-sphere position="0.07 0.05 0.16" radius="0.04" material="color: #ffffff;"></a-sphere>
+      <a-sphere position="-0.07 0.05 0.19" radius="0.02" material="color: #000000;"></a-sphere>
+      <a-sphere position="0.07 0.05 0.19" radius="0.02" material="color: #000000;"></a-sphere>
+    </a-entity>
   </a-scene>
 
   <script>
@@ -158,41 +216,58 @@
     const controlsContainer = document.getElementById('controls-container');
     const statusLog = document.getElementById('statusLog');
     
-    const cameraEntity = document.getElementById('main-camera');
-    const windowGoogle = document.getElementById('window-google');
-    const windowYouTube = document.getElementById('window-youtube');
+    const winGoogle = document.getElementById('win-google');
+    const winYouTube = document.getElementById('win-youtube');
+    
+    const gunModel = document.getElementById('gun-model');
+    const targetMonster = document.getElementById('target-monster');
+
+    let gameActive = false;
+    let isHoldingGun = false;
+    let isPinching = false;
+    let wasPinching = false;
 
     let smoothPointerX = window.innerWidth / 2;
     let smoothPointerY = window.innerHeight / 2;
-    let isPinching = false;
 
-    // AÇÕES DOS BOTÕES DA UI (Abrem Google e YouTube)
+    // BOTÕES DE NAVEGAÇÃO
     document.getElementById('btnOpenGoogle').addEventListener('click', () => {
-      window.open('https://www.google.com', '_blank');
+      winGoogle.style.display = 'flex';
+      statusLog.innerText = "Google aberto!";
     });
 
     document.getElementById('btnOpenYT').addEventListener('click', () => {
-      window.open('https://www.youtube.com', '_blank');
+      winYouTube.style.display = 'flex';
+      statusLog.innerText = "YouTube aberto!";
     });
 
-    // RECENTRALIZAR AS JANELAS NA SUA FRENTE
+    function closeWindow(id) {
+      document.getElementById(id).style.display = 'none';
+      statusLog.innerText = "Janela fechada.";
+    }
+
+    // BOTÃO JOGOS (INICIA O MODO DE TIRO)
+    document.getElementById('btnStartGame').addEventListener('click', () => {
+      gameActive = !gameActive;
+      if (gameActive) {
+        gunModel.setAttribute('visible', 'true');
+        targetMonster.setAttribute('visible', 'true');
+        statusLog.innerText = "🎮 Modo Jogo: Feche a mão para pegar a arma!";
+      } else {
+        gunModel.setAttribute('visible', 'false');
+        targetMonster.setAttribute('visible', 'false');
+        isHoldingGun = false;
+        statusLog.innerText = "Jogo encerrado.";
+      }
+    });
+
     document.getElementById('recenterUIBtn').addEventListener('click', () => {
-      const cameraObj = cameraEntity.object3D;
-      
-      const dirG = new THREE.Vector3(-0.8, 0, -2);
-      dirG.applyQuaternion(cameraObj.quaternion);
-      windowGoogle.object3D.position.copy(cameraObj.position).add(dirG);
-      windowGoogle.object3D.quaternion.copy(cameraObj.quaternion);
-
-      const dirYT = new THREE.Vector3(0.8, 0, -2);
-      dirYT.applyQuaternion(cameraObj.quaternion);
-      windowYouTube.object3D.position.copy(cameraObj.position).add(dirYT);
-      windowYouTube.object3D.quaternion.copy(cameraObj.quaternion);
-
-      statusLog.innerText = "Telas do Google e YouTube alinhadas!";
+      winGoogle.style.top = '15%'; winGoogle.style.left = '5%';
+      winYouTube.style.top = '15%'; winYouTube.style.right = '5%';
+      statusLog.innerText = "Telas alinhadas!";
     });
 
-    // MEDIAPIPE HANDS (RASTREAMENTO DA MÃO E CÂMERA)
+    // MEDIAPIPE HANDS & RASTREAMENTO
     const hands = new Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
@@ -218,29 +293,123 @@
 
         const thumbTip = landmarks[4];
         const indexTip = landmarks[8];
-        const indexBase = landmarks[5];
         const middleTip = landmarks[12];
+        const ringTip = landmarks[16];
+        const pinkyTip = landmarks[20];
+        const wrist = landmarks[0];
+        const middleBase = landmarks[9];
 
-        const originX = indexTip.x * handCanvas.width;
-        const originY = indexTip.y * handCanvas.height;
-        const dirX = (indexTip.x - indexBase.x) * 3.5;
-        const dirY = (indexTip.y - indexBase.y) * 3.5;
+        // 1. DETECTAR MÃO TOTALMENTE ABERTA (Largar Arma)
+        const isHandFullyOpen = (
+          Math.hypot(indexTip.x - wrist.x, indexTip.y - wrist.y) > 0.38 &&
+          Math.hypot(middleTip.x - wrist.x, middleTip.y - wrist.y) > 0.40 &&
+          Math.hypot(ringTip.x - wrist.x, ringTip.y - wrist.y) > 0.38 &&
+          Math.hypot(pinkyTip.x - wrist.x, pinkyTip.y - wrist.y) > 0.35
+        );
 
-        const targetX = (indexTip.x + dirX) * handCanvas.width;
-        const targetY = (indexTip.y + dirY) * handCanvas.height;
+        // 2. DETECTAR PEGAR (Mão Fechada / Punho)
+        const isHandClosed = (
+          Math.hypot(indexTip.x - middleBase.x, indexTip.y - middleBase.y) < 0.12 &&
+          Math.hypot(middleTip.x - middleBase.x, middleTip.y - middleBase.y) < 0.12 &&
+          Math.hypot(ringTip.x - middleBase.x, ringTip.y - middleBase.y) < 0.12
+        );
 
-        smoothPointerX += (targetX - smoothPointerX) * 0.25;
-        smoothPointerY += (targetY - smoothPointerY) * 0.25;
-
+        // 3. PINÇA (Dedão + Indicador) PARA ATIRAR
         const palmWidth = Math.hypot(landmarks[5].x - landmarks[17].x, landmarks[5].y - landmarks[17].y);
-        const pinchDistance = Math.hypot(thumbTip.x - middleTip.x, thumbTip.y - middleTip.y);
-        isPinching = (pinchDistance / palmWidth) < 0.32;
+        const pinchDistance = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
+        isPinching = (pinchDistance / palmWidth) < 0.35;
 
-        drawLaserRay(originX, originY, smoothPointerX, smoothPointerY, isPinching);
+        if (gameActive) {
+          if (isHandClosed && !isHoldingGun) {
+            isHoldingGun = true;
+            statusLog.innerText = "🔫 Arma pega! Faça pinça (Dedão + Indicador) para atirar!";
+          } else if (isHandFullyOpen && isHoldingGun) {
+            isHoldingGun = false;
+            statusLog.innerText = "✋ Arma solta!";
+          }
+
+          // MOVER A ARMA JUNTO COM A MÃO NO ESPAÇO 3D
+          if (isHoldingGun) {
+            const posX = (middleBase.x - 0.5) * 2.2;
+            const posY = -(middleBase.y - 0.5) * 1.8 - 0.1;
+            const posZ = -0.7;
+
+            gunModel.object3D.position.set(posX, posY, posZ);
+
+            // Rotaciona a arma para onde a mão aponta
+            const angleY = (middleBase.x - wrist.x) * 2;
+            const angleX = -(middleBase.y - wrist.y) * 2;
+            gunModel.object3D.rotation.set(angleX, angleY, 0);
+
+            // DISPARAR TIRO QUANDO FAZ A PINÇA
+            if (isPinching && !wasPinching) {
+              shootLaser(posX, posY, posZ);
+            }
+          }
+        }
+
+        wasPinching = isPinching;
+
+        // Laser normal da palma para o menu se não estiver com a arma segura
+        if (!isHoldingGun) {
+          const originX = middleBase.x * handCanvas.width;
+          const originY = middleBase.y * handCanvas.height;
+          const dirX = (middleBase.x - wrist.x) * 3.5;
+          const dirY = (middleBase.y - wrist.y) * 3.5;
+
+          const targetX = (middleBase.x + dirX) * handCanvas.width;
+          const targetY = (middleBase.y + dirY) * handCanvas.height;
+
+          smoothPointerX += (targetX - smoothPointerX) * 0.25;
+          smoothPointerY += (targetY - smoothPointerY) * 0.25;
+
+          drawLaserRay(originX, originY, smoothPointerX, smoothPointerY, isPinching);
+        }
       }
 
       handCtx.restore();
     });
+
+    // FUNÇÃO DE ATIRAR O LASER DA ARMA
+    function shootLaser(startX, startY, startZ) {
+      statusLog.innerText = "💥 POW! Tiro disparado!";
+      
+      // Cria a bala laser no A-Frame
+      const scene = document.querySelector('a-scene');
+      const bullet = document.createElement('a-sphere');
+      bullet.setAttribute('radius', '0.03');
+      bullet.setAttribute('material', 'color: #ef4444; shader: flat;');
+      bullet.setAttribute('position', `${startX} ${startY + 0.05} ${startZ - 0.2}`);
+      scene.appendChild(bullet);
+
+      // Animação da bala indo pra frente
+      let bulletZ = startZ - 0.2;
+      const interval = setInterval(() => {
+        bulletZ -= 0.1;
+        bullet.setAttribute('position', `${startX} ${startY + 0.05} ${bulletZ}`);
+
+        // Checa se acertou o bichinho
+        const monsterPos = targetMonster.object3D.position;
+        const dist = Math.hypot(startX - monsterPos.x, (startY + 0.05) - monsterPos.y, bulletZ - monsterPos.z);
+
+        if (dist < 0.3) {
+          statusLog.innerText = "🎯 ACERTOU O BICHINHO!";
+          // Move o bichinho para uma nova posição aleatória
+          targetMonster.object3D.position.set(
+            (Math.random() - 0.5) * 2,
+            (Math.random() - 0.5) * 1 + 0.2,
+            -2
+          );
+          clearInterval(interval);
+          bullet.remove();
+        }
+
+        if (bulletZ < -4) {
+          clearInterval(interval);
+          bullet.remove();
+        }
+      }, 30);
+    }
 
     function drawHandMesh(landmarks) {
       for (const connection of HAND_CONNECTIONS) {
@@ -271,15 +440,12 @@
       handCtx.fill();
     }
 
-    // INICIAR A CÂMERA DO CELULAR
     async function startApp() {
       startBtn.style.display = 'none';
       controlsContainer.style.display = 'flex';
 
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-        try {
-          await DeviceOrientationEvent.requestPermission();
-        } catch(e) {}
+        try { await DeviceOrientationEvent.requestPermission(); } catch(e) {}
       }
 
       try {
@@ -297,10 +463,9 @@
           requestAnimationFrame(processFrame);
         };
         processFrame();
-        statusLog.innerText = "Câmera e Laser ativados com sucesso!";
+        statusLog.innerText = "Sistema de AR com Jogos Ativo!";
       } catch (err) {
-        statusLog.innerText = "⚠️ Erro na Câmera: Permita o acesso no navegador.";
-        console.error("Erro Câmera:", err);
+        statusLog.innerText = "⚠️ Erro na Câmera.";
       }
     }
 
@@ -308,3 +473,4 @@
   </script>
 </body>
 </html>
+
