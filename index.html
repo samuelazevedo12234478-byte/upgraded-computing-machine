@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Meta Quest OS - Navegação Interna & Scroll por Pinça</title>
+  <title>Meta Quest OS - Clique Preciso & Scroll</title>
   <style>
     * {
       box-sizing: border-box;
@@ -24,37 +24,48 @@
       display: none;
     }
 
+    #output_canvas {
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+      pointer-events: none;
+    }
+
     #windows-container {
       position: absolute;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
-      z-index: 1;
-      perspective: 1000px;
+      z-index: 10;
       pointer-events: none;
     }
 
     #main-dock {
       position: absolute;
-      bottom: 60px;
+      bottom: 40px;
       left: 50%;
       transform: translateX(-50%);
       padding: 12px 24px;
       background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.25);
       border-radius: 40px;
       backdrop-filter: blur(20px);
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
       display: flex;
       gap: 16px;
       align-items: center;
+      pointer-events: auto;
     }
 
     .dock-btn {
       padding: 12px 20px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 20px;
       color: #fff;
       font-weight: 600;
@@ -64,18 +75,18 @@
     }
 
     .dock-btn.hovered {
-      background: rgba(56, 189, 248, 0.4);
+      background: rgba(56, 189, 248, 0.5);
       border-color: #38bdf8;
       transform: scale(1.08);
     }
 
     .app-window {
       position: absolute;
-      width: 85vw;
-      max-width: 550px;
-      height: 420px;
+      width: 90vw;
+      max-width: 500px;
+      height: 380px;
       background: rgba(20, 25, 35, 0.95);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.25);
       border-radius: 20px;
       backdrop-filter: blur(24px);
       box-shadow: 0 25px 50px rgba(0, 0, 0, 0.8);
@@ -86,8 +97,8 @@
     }
 
     .window-header {
-      height: 42px;
-      background: rgba(255, 255, 255, 0.05);
+      height: 40px;
+      background: rgba(255, 255, 255, 0.08);
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       display: flex;
       align-items: center;
@@ -119,7 +130,7 @@
     }
 
     .window-grab-bar {
-      height: 20px;
+      height: 22px;
       background: rgba(15, 23, 42, 0.98);
       display: flex;
       align-items: center;
@@ -138,23 +149,12 @@
       box-shadow: 0 0 12px #38bdf8;
     }
 
-    #output_canvas {
-      width: 100vw;
-      height: 100vh;
-      object-fit: cover;
-      position: absolute;
-      top: 0;
-      left: 0;
-      z-index: 2;
-      pointer-events: none;
-    }
-
     #startBtn {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      z-index: 10;
+      z-index: 100;
       padding: 18px 36px;
       font-size: 1.1rem;
       font-weight: bold;
@@ -163,14 +163,15 @@
       border: none;
       border-radius: 50px;
       cursor: pointer;
+      box-shadow: 0 10px 30px rgba(2, 132, 199, 0.5);
     }
 
     #statusLog {
       position: absolute;
-      bottom: 15px;
+      top: 15px;
       left: 50%;
       transform: translateX(-50%);
-      z-index: 10;
+      z-index: 100;
       color: #cbd5e1;
       font-size: 0.85rem;
       background: rgba(15, 23, 42, 0.85);
@@ -185,19 +186,19 @@
 </head>
 <body>
 
-  <button id="startBtn">Iniciar Meta Quest AR com Scroll</button>
+  <button id="startBtn">Iniciar Meta Quest AR</button>
   <video id="webcam" playsinline></video>
-
-  <div id="windows-container">
-    <div id="main-dock">
-      <div class="dock-btn" data-app="Navegador Web" data-url="https://html.duckduckgo.com/html/">🌐 Web / Busca</div>
-      <div class="dock-btn" data-app="Wikipedia" data-url="https://pt.m.wikipedia.org">📚 Wikipédia</div>
-    </div>
-  </div>
 
   <canvas id="output_canvas"></canvas>
 
-  <div id="statusLog">Pince no conteúdo da janela e puxe para ROLAR (Scroll)!</div>
+  <div id="windows-container">
+    <div id="main-dock">
+      <div class="dock-btn" data-app="Navegador Web" data-url="https://html.duckduckgo.com/html/">🌐 Busca</div>
+      <div class="dock-btn" data-app="Wikipédia" data-url="https://pt.m.wikipedia.org">📚 Wikipédia</div>
+    </div>
+  </div>
+
+  <div id="statusLog">Toque rápido = Clique | Segurar e arrastar = Scroll</div>
 
   <script>
     const videoElement = document.getElementById('webcam');
@@ -211,7 +212,13 @@
     let wasPinching = false;
     let activeDraggingWindow = null;
     let isContentScrolling = false;
+    
+    // Controle de tempo do clique/scroll
+    let pinchStartTime = 0;
+    let pinchStartX = 0;
+    let pinchStartY = 0;
     let lastPinchY = 0;
+    
     let dragOffsetX = 0, dragOffsetY = 0;
 
     let smoothPointerX = window.innerWidth / 2;
@@ -260,10 +267,23 @@
         smoothPointerX += (targetX - smoothPointerX) * 0.25;
         smoothPointerY += (targetY - smoothPointerY) * 0.25;
 
-        // Pinça: Polegar + Dedo do Meio
+        // Pinça
         const palmWidth = Math.hypot(landmarks[5].x - landmarks[17].x, landmarks[5].y - landmarks[17].y);
         const pinchDistance = Math.hypot(thumbTip.x - middleTip.x, thumbTip.y - middleTip.y);
         const isPinching = (pinchDistance / palmWidth) < 0.32;
+
+        const now = Date.now();
+
+        // Registro de início de pinça
+        if (isPinching && !wasPinching) {
+          pinchStartTime = now;
+          pinchStartX = smoothPointerX;
+          pinchStartY = smoothPointerY;
+          lastPinchY = smoothPointerY;
+        }
+
+        const pinchDuration = isPinching ? (now - pinchStartTime) : 0;
+        const movedDistance = Math.hypot(smoothPointerX - pinchStartX, smoothPointerY - pinchStartY);
 
         // Abrir apps pelo Dock
         if (!activeDraggingWindow && !isContentScrolling) {
@@ -282,14 +302,13 @@
           });
         }
 
-        // Interação com as Janelas
+        // Interação com Janelas
         const allWindows = document.querySelectorAll('.app-window');
         allWindows.forEach(win => {
           const iframe = win.querySelector('.window-body');
           const grabPill = win.querySelector('.grab-pill');
           const closeBtn = win.querySelector('.close-btn');
 
-          // Fechar
           if (closeBtn) {
             const cRect = closeBtn.getBoundingClientRect();
             if (smoothPointerX >= cRect.left && smoothPointerX <= cRect.right &&
@@ -299,7 +318,6 @@
             }
           }
 
-          // Arraste da Janela (Grab Bar)
           if (grabPill) {
             const gRect = grabPill.getBoundingClientRect();
             if (smoothPointerX >= gRect.left && smoothPointerX <= gRect.right &&
@@ -318,32 +336,33 @@
             }
           }
 
-          // ROLAGEM (SCROLL) E CLIQUE DENTRO DA TELA
+          // ROLAGEM / CLIQUE INTERNO
           const wRect = win.getBoundingClientRect();
           const isInsideBody = smoothPointerX >= wRect.left && smoothPointerX <= wRect.right &&
-                               smoothPointerY >= (wRect.top + 40) && smoothPointerY <= (wRect.bottom - 20);
+                               smoothPointerY >= (wRect.top + 40) && smoothPointerY <= (wRect.bottom - 22);
 
           if (isInsideBody && !activeDraggingWindow) {
             isHoveringAny = true;
 
-            if (isPinching) {
-              if (!isContentScrolling) {
-                isContentScrolling = true;
-                lastPinchY = smoothPointerY;
-              } else {
-                // Mover para cima/baixo rola a página
-                const deltaY = lastPinchY - smoothPointerY;
-                try {
-                  iframe.contentWindow.scrollBy(0, deltaY * 2);
-                } catch(e) {}
-                lastPinchY = smoothPointerY;
-                statusLog.innerText = "Rolando página...";
-              }
+            // Transição para Scroll: se segurar mais de 250ms OU se arrastar > 15px
+            if (isPinching && (pinchDuration > 250 || movedDistance > 15)) {
+              isContentScrolling = true;
+              const deltaY = lastPinchY - smoothPointerY;
+              try {
+                iframe.contentWindow.scrollBy(0, deltaY * 2.5);
+              } catch(e) {}
+              lastPinchY = smoothPointerY;
+              statusLog.innerText = "Rolando página...";
+            }
+            
+            // Clique ao soltar se foi rápido e sem arrastar muito
+            if (!isPinching && wasPinching && pinchDuration < 300 && movedDistance < 15) {
+              statusLog.innerText = "Clique disparado!";
+              simulateClickInIframe(iframe, smoothPointerX - wRect.left, smoothPointerY - (wRect.top + 40));
             }
           }
         });
 
-        // Arrastar Janela em Execução
         if (activeDraggingWindow) {
           if (isPinching) {
             isHoveringAny = true;
@@ -370,11 +389,23 @@
       canvasCtx.restore();
     });
 
+    function simulateClickInIframe(iframe, relativeX, relativeY) {
+      try {
+        const targetDoc = iframe.contentDocument || iframe.contentWindow.document;
+        if (targetDoc) {
+          const el = targetDoc.elementFromPoint(relativeX, relativeY);
+          if (el) el.click();
+        }
+      } catch(e) {
+        console.log("CORS restriction on click target");
+      }
+    }
+
     function createAppWindow(appName, url) {
       const windowEl = document.createElement('div');
       windowEl.className = 'app-window';
-      windowEl.style.left = `${window.innerWidth / 2 - 220}px`;
-      windowEl.style.top = `${window.innerHeight / 2 - 200}px`;
+      windowEl.style.left = `${(window.innerWidth - 500) / 2}px`;
+      windowEl.style.top = `${(window.innerHeight - 380) / 2}px`;
 
       windowEl.innerHTML = `
         <div class="window-header">
@@ -426,6 +457,8 @@
 
     async function startCamera() {
       startBtn.style.display = 'none';
+      createAppWindow('Wikipédia', 'https://pt.m.wikipedia.org');
+
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { ideal: "environment" } }
