@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Meta Quest OS - Clique Preciso & Scroll</title>
+  <title>Meta Quest OS - Interface Fixa</title>
   <style>
     * {
       box-sizing: border-box;
@@ -24,6 +24,7 @@
       display: none;
     }
 
+    /* Camada 1: Câmera + Esqueleto + Laser */
     #output_canvas {
       width: 100vw;
       height: 100vh;
@@ -35,6 +36,7 @@
       pointer-events: none;
     }
 
+    /* Camada 2: Container para as Janelas Abertas */
     #windows-container {
       position: absolute;
       top: 0;
@@ -45,51 +47,55 @@
       pointer-events: none;
     }
 
+    /* Camada 3: Dock de Aplicativos (SEMPRE NA FRENTE) */
     #main-dock {
-      position: absolute;
-      bottom: 40px;
+      position: fixed;
+      bottom: 25px;
       left: 50%;
       transform: translateX(-50%);
-      padding: 12px 24px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(255, 255, 255, 0.25);
+      padding: 10px 20px;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.3);
       border-radius: 40px;
       backdrop-filter: blur(20px);
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.9);
       display: flex;
-      gap: 16px;
+      gap: 12px;
       align-items: center;
+      z-index: 50;
       pointer-events: auto;
     }
 
     .dock-btn {
-      padding: 12px 20px;
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 10px 18px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.25);
       border-radius: 20px;
-      color: #fff;
+      color: #ffffff;
       font-weight: 600;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       cursor: pointer;
+      white-space: nowrap;
       transition: all 0.15s ease;
     }
 
     .dock-btn.hovered {
       background: rgba(56, 189, 248, 0.5);
       border-color: #38bdf8;
-      transform: scale(1.08);
+      transform: scale(1.06);
     }
 
+    /* Estilo das Janelas Abertas */
     .app-window {
       position: absolute;
-      width: 90vw;
-      max-width: 500px;
-      height: 380px;
+      width: 88vw;
+      max-width: 480px;
+      height: 320px;
       background: rgba(20, 25, 35, 0.95);
       border: 1px solid rgba(255, 255, 255, 0.25);
-      border-radius: 20px;
+      border-radius: 18px;
       backdrop-filter: blur(24px);
-      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.8);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -97,27 +103,27 @@
     }
 
     .window-header {
-      height: 40px;
+      height: 38px;
       background: rgba(255, 255, 255, 0.08);
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 16px;
+      padding: 0 14px;
       color: #f1f5f9;
-      font-size: 0.88rem;
+      font-size: 0.85rem;
       font-weight: 600;
     }
 
     .close-btn {
-      width: 24px;
-      height: 24px;
+      width: 22px;
+      height: 22px;
       border-radius: 50%;
       background: #ef4444;
       border: none;
       color: #fff;
       font-weight: bold;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       cursor: pointer;
     }
 
@@ -130,7 +136,7 @@
     }
 
     .window-grab-bar {
-      height: 22px;
+      height: 20px;
       background: rgba(15, 23, 42, 0.98);
       display: flex;
       align-items: center;
@@ -138,8 +144,8 @@
     }
 
     .grab-pill {
-      width: 130px;
-      height: 6px;
+      width: 120px;
+      height: 5px;
       background: rgba(255, 255, 255, 0.4);
       border-radius: 10px;
     }
@@ -173,11 +179,12 @@
       transform: translateX(-50%);
       z-index: 100;
       color: #cbd5e1;
-      font-size: 0.85rem;
-      background: rgba(15, 23, 42, 0.85);
-      padding: 8px 18px;
+      font-size: 0.8rem;
+      background: rgba(15, 23, 42, 0.88);
+      padding: 6px 16px;
       border-radius: 30px;
       border: 1px solid rgba(255, 255, 255, 0.1);
+      white-space: nowrap;
     }
   </style>
 
@@ -191,14 +198,14 @@
 
   <canvas id="output_canvas"></canvas>
 
-  <div id="windows-container">
-    <div id="main-dock">
-      <div class="dock-btn" data-app="Navegador Web" data-url="https://html.duckduckgo.com/html/">🌐 Busca</div>
-      <div class="dock-btn" data-app="Wikipédia" data-url="https://pt.m.wikipedia.org">📚 Wikipédia</div>
-    </div>
+  <div id="windows-container"></div>
+
+  <div id="main-dock">
+    <div class="dock-btn" data-app="Google Busca" data-url="https://html.duckduckgo.com/html/">🌐 Google / Busca</div>
+    <div class="dock-btn" data-app="Wikipédia" data-url="https://pt.m.wikipedia.org">📚 Wikipédia</div>
   </div>
 
-  <div id="statusLog">Toque rápido = Clique | Segurar e arrastar = Scroll</div>
+  <div id="statusLog">Aponte o laser e pince para usar!</div>
 
   <script>
     const videoElement = document.getElementById('webcam');
@@ -213,12 +220,9 @@
     let activeDraggingWindow = null;
     let isContentScrolling = false;
     
-    // Controle de tempo do clique/scroll
     let pinchStartTime = 0;
-    let pinchStartX = 0;
-    let pinchStartY = 0;
+    let pinchStartX = 0, pinchStartY = 0;
     let lastPinchY = 0;
-    
     let dragOffsetX = 0, dragOffsetY = 0;
 
     let smoothPointerX = window.innerWidth / 2;
@@ -274,7 +278,6 @@
 
         const now = Date.now();
 
-        // Registro de início de pinça
         if (isPinching && !wasPinching) {
           pinchStartTime = now;
           pinchStartX = smoothPointerX;
@@ -285,7 +288,7 @@
         const pinchDuration = isPinching ? (now - pinchStartTime) : 0;
         const movedDistance = Math.hypot(smoothPointerX - pinchStartX, smoothPointerY - pinchStartY);
 
-        // Abrir apps pelo Dock
+        // 1. Interagir com o Dock de Botões
         if (!activeDraggingWindow && !isContentScrolling) {
           dockButtons.forEach(btn => {
             const rect = btn.getBoundingClientRect();
@@ -295,6 +298,7 @@
               btn.classList.add('hovered');
               if (isPinching && !wasPinching) {
                 createAppWindow(btn.dataset.app, btn.dataset.url);
+                statusLog.innerText = "Janela " + btn.dataset.app + " aberta!";
               }
             } else {
               btn.classList.remove('hovered');
@@ -302,7 +306,7 @@
           });
         }
 
-        // Interação com Janelas
+        // 2. Interagir com as Janelas
         const allWindows = document.querySelectorAll('.app-window');
         allWindows.forEach(win => {
           const iframe = win.querySelector('.window-body');
@@ -336,29 +340,21 @@
             }
           }
 
-          // ROLAGEM / CLIQUE INTERNO
+          // Rolagem & Clique Interno
           const wRect = win.getBoundingClientRect();
           const isInsideBody = smoothPointerX >= wRect.left && smoothPointerX <= wRect.right &&
-                               smoothPointerY >= (wRect.top + 40) && smoothPointerY <= (wRect.bottom - 22);
+                               smoothPointerY >= (wRect.top + 38) && smoothPointerY <= (wRect.bottom - 20);
 
           if (isInsideBody && !activeDraggingWindow) {
             isHoveringAny = true;
 
-            // Transição para Scroll: se segurar mais de 250ms OU se arrastar > 15px
-            if (isPinching && (pinchDuration > 250 || movedDistance > 15)) {
+            if (isPinching && (pinchDuration > 300 || movedDistance > 15)) {
               isContentScrolling = true;
               const deltaY = lastPinchY - smoothPointerY;
               try {
                 iframe.contentWindow.scrollBy(0, deltaY * 2.5);
               } catch(e) {}
               lastPinchY = smoothPointerY;
-              statusLog.innerText = "Rolando página...";
-            }
-            
-            // Clique ao soltar se foi rápido e sem arrastar muito
-            if (!isPinching && wasPinching && pinchDuration < 300 && movedDistance < 15) {
-              statusLog.innerText = "Clique disparado!";
-              simulateClickInIframe(iframe, smoothPointerX - wRect.left, smoothPointerY - (wRect.top + 40));
             }
           }
         });
@@ -389,23 +385,12 @@
       canvasCtx.restore();
     });
 
-    function simulateClickInIframe(iframe, relativeX, relativeY) {
-      try {
-        const targetDoc = iframe.contentDocument || iframe.contentWindow.document;
-        if (targetDoc) {
-          const el = targetDoc.elementFromPoint(relativeX, relativeY);
-          if (el) el.click();
-        }
-      } catch(e) {
-        console.log("CORS restriction on click target");
-      }
-    }
-
     function createAppWindow(appName, url) {
       const windowEl = document.createElement('div');
       windowEl.className = 'app-window';
-      windowEl.style.left = `${(window.innerWidth - 500) / 2}px`;
-      windowEl.style.top = `${(window.innerHeight - 380) / 2}px`;
+      // Posiciona no topo/centro para não tampar o dock
+      windowEl.style.left = `${Math.max(10, (window.innerWidth - 480) / 2)}px`;
+      windowEl.style.top = `60px`;
 
       windowEl.innerHTML = `
         <div class="window-header">
