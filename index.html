@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Meta Quest Spatial OS - AR Gun Game</title>
+  <title>Meta Quest AR - Menu de Jogos (Tiro & Homem-Aranha)</title>
   
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   
@@ -74,35 +74,37 @@
       box-shadow: 0 10px 30px rgba(2, 132, 199, 0.5);
     }
 
-    #controls-container {
+    /* MENU DE ESCOLHA DE JOGOS */
+    #menu-container {
       position: absolute;
       bottom: 30px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 200;
-      display: flex;
-      gap: 10px;
-      background: rgba(15, 23, 42, 0.75);
-      padding: 10px 18px;
+      display: none;
+      gap: 12px;
+      background: rgba(15, 23, 42, 0.85);
+      padding: 12px 24px;
       border-radius: 40px;
       backdrop-filter: blur(12px);
       border: 1px solid rgba(255, 255, 255, 0.15);
     }
 
-    .ui-btn {
-      padding: 10px 18px;
-      font-size: 0.85rem;
+    .game-btn {
+      padding: 12px 22px;
+      font-size: 0.95rem;
       font-weight: bold;
       color: #fff;
-      background: rgba(30, 41, 59, 0.88);
       border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 30px;
       cursor: pointer;
+      background: rgba(30, 41, 59, 0.9);
+      transition: all 0.2s;
     }
 
-    .ui-btn.youtube { background: rgba(220, 38, 38, 0.85); }
-    .ui-btn.google { background: rgba(2, 132, 199, 0.85); }
-    .ui-btn.games { background: rgba(16, 185, 129, 0.85); }
+    .game-btn.gun { background: rgba(16, 185, 129, 0.85); }
+    .game-btn.spider { background: rgba(239, 68, 68, 0.85); }
+    .game-btn.back { background: rgba(100, 116, 139, 0.85); }
 
     #statusLog {
       position: absolute;
@@ -111,99 +113,54 @@
       transform: translateX(-50%);
       z-index: 200;
       color: #cbd5e1;
-      font-size: 0.8rem;
-      background: rgba(15, 23, 42, 0.88);
-      padding: 6px 16px;
-      border-radius: 30px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      white-space: nowrap;
-    }
-
-    .ar-window-container {
-      position: absolute;
-      z-index: 50;
-      display: none;
-      background: #0f172a;
-      border: 2px solid #38bdf8;
-      border-radius: 16px;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
-      overflow: hidden;
-      flex-direction: column;
-    }
-
-    .ar-window-header {
-      height: 36px;
-      background: #1e293b;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0 12px;
-      color: #fff;
       font-size: 0.85rem;
       font-weight: bold;
+      background: rgba(15, 23, 42, 0.88);
+      padding: 8px 20px;
+      border-radius: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      white-space: nowrap;
     }
-
-    .close-btn {
-      background: #ef4444;
-      color: #fff;
-      border: none;
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      cursor: pointer;
-    }
-
-    iframe { width: 100%; height: calc(100% - 36px); border: none; background: #fff; }
   </style>
 </head>
 <body>
 
-  <button id="startBtn">Iniciar Meta Quest AR</button>
+  <button id="startBtn">🎮 Iniciar Sistema AR</button>
   
-  <div id="controls-container" style="display: none;">
-    <button class="ui-btn google" id="btnOpenGoogle">🔍 Google</button>
-    <button class="ui-btn youtube" id="btnOpenYT">▶️ YouTube</button>
-    <button class="ui-btn games" id="btnStartGame">🎮 Jogos</button>
-    <button class="ui-btn" id="recenterUIBtn">🎯 Recentralizar</button>
+  <div id="menu-container">
+    <button class="game-btn gun" id="btnPlayGun">🔫 Jogo da Arma</button>
+    <button class="game-btn spider" id="btnPlaySpider">🕷️ Jogo da Teia</button>
+    <button class="game-btn back" id="btnBackMenu" style="display:none;">🏠 Menu</button>
   </div>
 
-  <div id="statusLog">Sistema Espacial Pronto!</div>
+  <div id="statusLog">Toque para ativar o sistema AR!</div>
   
   <video id="webcam" playsinline autoplay muted></video>
   <canvas id="hand_canvas"></canvas>
 
-  <div id="win-google" class="ar-window-container" style="width: 320px; height: 350px; top: 15%; left: 5%;">
-    <div class="ar-window-header">
-      <span>🔍 Google Search</span>
-      <button class="close-btn" onclick="closeWindow('win-google')">✕</button>
-    </div>
-    <iframe src="https://www.bing.com"></iframe>
-  </div>
-
-  <div id="win-youtube" class="ar-window-container" style="width: 320px; height: 240px; top: 15%; right: 5%;">
-    <div class="ar-window-header">
-      <span>▶️ YouTube VR</span>
-      <button class="close-btn" onclick="closeWindow('win-youtube')">✕</button>
-    </div>
-    <iframe src="https://www.youtube.com/embed?listType=playlist&list=PLrEnWoR738-qXaS-Xp93LwB5Lp8Y"></iframe>
-  </div>
-
   <a-scene embedded vr-mode-ui="enabled: false" renderer="alpha: true; antialias: true;">
-    <a-entity id="main-camera" camera look-controls="magicWindowTrackingEnabled: true"></a-entity>
+    <a-entity id="main-camera" camera look-controls="enabled: true; magicWindowTrackingEnabled: true" position="0 1.6 0"></a-entity>
 
-    <a-entity id="gun-model" position="0 -0.2 -0.8" visible="false">
-      <a-box position="0 0 0" width="0.08" height="0.12" depth="0.3" material="color: #1e293b; metalness: 0.8; roughness: 0.2;"></a-box>
-      <a-cylinder position="0 0.03 -0.2" radius="0.025" height="0.25" rotation="90 0 0" material="color: #0284c7; metalness: 0.9;"></a-cylinder>
-      <a-box position="0 -0.09 0.05" width="0.06" height="0.12" depth="0.08" rotation="-20 0 0" material="color: #0f172a;"></a-box>
-      <a-sphere position="0 0.07 -0.25" radius="0.015" material="color: #ef4444; shader: flat;"></a-sphere>
+    <a-entity id="gun-game-group" visible="false">
+      <a-entity id="gun-model" position="0 -0.2 -0.8">
+        <a-box position="0 0 0" width="0.08" height="0.12" depth="0.3" material="color: #1e293b; metalness: 0.8; roughness: 0.2;"></a-box>
+        <a-cylinder position="0 0.03 -0.2" radius="0.025" height="0.25" rotation="90 0 0" material="color: #0284c7; metalness: 0.9;"></a-cylinder>
+        <a-box position="0 -0.09 0.05" width="0.06" height="0.12" depth="0.08" rotation="-20 0 0" material="color: #0f172a;"></a-box>
+        <a-cylinder position="0 0.03 -1.25" radius="0.004" height="2" rotation="90 0 0" material="color: #ef4444; opacity: 0.6; transparent: true; shader: flat;"></a-cylinder>
+      </a-entity>
+
+      <a-entity id="target-monster" position="0 0.2 -2.5">
+        <a-sphere radius="0.2" material="color: #22c55e; roughness: 0.3;"></a-sphere>
+        <a-sphere position="-0.07 0.05 0.16" radius="0.04" material="color: #ffffff;"></a-sphere>
+        <a-sphere position="0.07 0.05 0.16" radius="0.04" material="color: #ffffff;"></a-sphere>
+        <a-sphere position="-0.07 0.05 0.19" radius="0.02" material="color: #000000;"></a-sphere>
+        <a-sphere position="0.07 0.05 0.19" radius="0.02" material="color: #000000;"></a-sphere>
+        <a-box position="0 -0.2 0" width="0.6" height="0.05" depth="0.6" material="color: #38bdf8; opacity: 0.3; transparent: true;"></a-box>
+      </a-entity>
     </a-entity>
 
-    <a-entity id="target-monster" position="0 0.2 -2" visible="false">
-      <a-sphere radius="0.2" material="color: #22c55e; roughness: 0.3;"></a-sphere>
-      <a-sphere position="-0.07 0.05 0.16" radius="0.04" material="color: #ffffff;"></a-sphere>
-      <a-sphere position="0.07 0.05 0.16" radius="0.04" material="color: #ffffff;"></a-sphere>
-      <a-sphere position="-0.07 0.05 0.19" radius="0.02" material="color: #000000;"></a-sphere>
-      <a-sphere position="0.07 0.05 0.19" radius="0.02" material="color: #000000;"></a-sphere>
+    <a-entity id="spider-game-group" visible="false">
+      <a-box id="spider-item" position="0 0.5 -2.2" width="0.3" height="0.3" depth="0.3" material="color: #ef4444; metalness: 0.5;"></a-box>
     </a-entity>
   </a-scene>
 
@@ -213,61 +170,65 @@
     const handCtx = handCanvas.getContext('2d');
     
     const startBtn = document.getElementById('startBtn');
-    const controlsContainer = document.getElementById('controls-container');
+    const menuContainer = document.getElementById('menu-container');
     const statusLog = document.getElementById('statusLog');
     
-    const winGoogle = document.getElementById('win-google');
-    const winYouTube = document.getElementById('win-youtube');
-    
+    const btnPlayGun = document.getElementById('btnPlayGun');
+    const btnPlaySpider = document.getElementById('btnPlaySpider');
+    const btnBackMenu = document.getElementById('btnBackMenu');
+
+    const gunGameGroup = document.getElementById('gun-game-group');
+    const spiderGameGroup = document.getElementById('spider-game-group');
     const gunModel = document.getElementById('gun-model');
     const targetMonster = document.getElementById('target-monster');
+    const spiderItem = document.getElementById('spider-item');
 
-    let gameActive = false;
+    let currentMode = 'menu'; // 'menu', 'gun', 'spider'
     let isHoldingGun = false;
     let isPinching = false;
     let wasPinching = false;
 
-    let smoothPointerX = window.innerWidth / 2;
-    let smoothPointerY = window.innerHeight / 2;
+    // VARIÁVEIS DO JOGO DO HOMEM-ARANHA
+    let spiderWebActive = false;
+    let itemPulled = false;
+    let itemPullProgress = 0;
+    let startPullPos = { x: 0, y: 0, z: 0 };
 
-    // BOTÕES DE NAVEGAÇÃO
-    document.getElementById('btnOpenGoogle').addEventListener('click', () => {
-      winGoogle.style.display = 'flex';
-      statusLog.innerText = "Google aberto!";
+    // SELEÇÃO DE JOGOS NO MENU
+    btnPlayGun.addEventListener('click', () => {
+      currentMode = 'gun';
+      gunGameGroup.setAttribute('visible', 'true');
+      spiderGameGroup.setAttribute('visible', 'false');
+      btnPlayGun.style.display = 'none';
+      btnPlaySpider.style.display = 'none';
+      btnBackMenu.style.display = 'block';
+      statusLog.innerText = "🔫 Jogo da Arma Ativo! Feche a mão para pegar.";
     });
 
-    document.getElementById('btnOpenYT').addEventListener('click', () => {
-      winYouTube.style.display = 'flex';
-      statusLog.innerText = "YouTube aberto!";
+    btnPlaySpider.addEventListener('click', () => {
+      currentMode = 'spider';
+      gunGameGroup.setAttribute('visible', 'false');
+      spiderGameGroup.setAttribute('visible', 'true');
+      btnPlayGun.style.display = 'none';
+      btnPlaySpider.style.display = 'none';
+      btnBackMenu.style.display = 'block';
+      statusLog.innerText = "🕷️ Jogo da Teia Ativo! Feche a mão para pegar o cubo.";
     });
 
-    function closeWindow(id) {
-      document.getElementById(id).style.display = 'none';
-      statusLog.innerText = "Janela fechada.";
-    }
-
-    // BOTÃO JOGOS (INICIA O MODO DE TIRO)
-    document.getElementById('btnStartGame').addEventListener('click', () => {
-      gameActive = !gameActive;
-      if (gameActive) {
-        gunModel.setAttribute('visible', 'true');
-        targetMonster.setAttribute('visible', 'true');
-        statusLog.innerText = "🎮 Modo Jogo: Feche a mão para pegar a arma!";
-      } else {
-        gunModel.setAttribute('visible', 'false');
-        targetMonster.setAttribute('visible', 'false');
-        isHoldingGun = false;
-        statusLog.innerText = "Jogo encerrado.";
-      }
+    btnBackMenu.addEventListener('click', () => {
+      currentMode = 'menu';
+      gunGameGroup.setAttribute('visible', 'false');
+      spiderGameGroup.setAttribute('visible', 'false');
+      btnPlayGun.style.display = 'block';
+      btnPlaySpider.style.display = 'block';
+      btnBackMenu.style.display = 'none';
+      isHoldingGun = false;
+      spiderWebActive = false;
+      itemPulled = false;
+      statusLog.innerText = "Escolha um jogo abaixo!";
     });
 
-    document.getElementById('recenterUIBtn').addEventListener('click', () => {
-      winGoogle.style.top = '15%'; winGoogle.style.left = '5%';
-      winYouTube.style.top = '15%'; winYouTube.style.right = '5%';
-      statusLog.innerText = "Telas alinhadas!";
-    });
-
-    // MEDIAPIPE HANDS & RASTREAMENTO
+    // MEDIAPIPE HANDS
     const hands = new Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
@@ -288,7 +249,6 @@
 
       if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
         const landmarks = results.multiHandLandmarks[0];
-
         drawHandMesh(landmarks);
 
         const thumbTip = landmarks[4];
@@ -299,116 +259,152 @@
         const wrist = landmarks[0];
         const middleBase = landmarks[9];
 
-        // 1. DETECTAR MÃO TOTALMENTE ABERTA (Largar Arma)
-        const isHandFullyOpen = (
-          Math.hypot(indexTip.x - wrist.x, indexTip.y - wrist.y) > 0.38 &&
-          Math.hypot(middleTip.x - wrist.x, middleTip.y - wrist.y) > 0.40 &&
-          Math.hypot(ringTip.x - wrist.x, ringTip.y - wrist.y) > 0.38 &&
-          Math.hypot(pinkyTip.x - wrist.x, pinkyTip.y - wrist.y) > 0.35
-        );
-
-        // 2. DETECTAR PEGAR (Mão Fechada / Punho)
+        // GESTOS COMUNS
         const isHandClosed = (
           Math.hypot(indexTip.x - middleBase.x, indexTip.y - middleBase.y) < 0.12 &&
           Math.hypot(middleTip.x - middleBase.x, middleTip.y - middleBase.y) < 0.12 &&
           Math.hypot(ringTip.x - middleBase.x, ringTip.y - middleBase.y) < 0.12
         );
 
-        // 3. PINÇA (Dedão + Indicador) PARA ATIRAR
+        const isIndexExtended = Math.hypot(indexTip.x - wrist.x, indexTip.y - wrist.y) > 0.35;
+        const isPinkyExtended = Math.hypot(pinkyTip.x - wrist.x, pinkyTip.y - wrist.y) > 0.30;
+        const isMiddleFolded = Math.hypot(middleTip.x - middleBase.x, middleTip.y - middleBase.y) < 0.15;
+        const isRingFolded = Math.hypot(ringTip.x - middleBase.x, ringTip.y - middleBase.y) < 0.15;
+        const isSpiderManGesture = isIndexExtended && isPinkyExtended && isMiddleFolded && isRingFolded;
+
         const palmWidth = Math.hypot(landmarks[5].x - landmarks[17].x, landmarks[5].y - landmarks[17].y);
         const pinchDistance = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
         isPinching = (pinchDistance / palmWidth) < 0.35;
 
-        if (gameActive) {
+        // LÓGICA DO JOGO DA ARMA
+        if (currentMode === 'gun') {
           if (isHandClosed && !isHoldingGun) {
             isHoldingGun = true;
-            statusLog.innerText = "🔫 Arma pega! Faça pinça (Dedão + Indicador) para atirar!";
-          } else if (isHandFullyOpen && isHoldingGun) {
+            statusLog.innerText = "🔫 Arma Pega! Faça pinça para atirar.";
+          } else if (isSpiderManGesture && isHoldingGun) {
             isHoldingGun = false;
-            statusLog.innerText = "✋ Arma solta!";
+            statusLog.innerText = "🕸️ Arma Solta!";
           }
 
-          // MOVER A ARMA JUNTO COM A MÃO NO ESPAÇO 3D
           if (isHoldingGun) {
             const posX = (middleBase.x - 0.5) * 2.2;
             const posY = -(middleBase.y - 0.5) * 1.8 - 0.1;
             const posZ = -0.7;
 
             gunModel.object3D.position.set(posX, posY, posZ);
+            const dirVecX = (middleBase.x - wrist.x) * 2;
+            const dirVecY = -(middleBase.y - wrist.y) * 2;
+            gunModel.object3D.rotation.set(dirVecY, dirVecX, 0);
 
-            // Rotaciona a arma para onde a mão aponta
-            const angleY = (middleBase.x - wrist.x) * 2;
-            const angleX = -(middleBase.y - wrist.y) * 2;
-            gunModel.object3D.rotation.set(angleX, angleY, 0);
-
-            // DISPARAR TIRO QUANDO FAZ A PINÇA
             if (isPinching && !wasPinching) {
-              shootLaser(posX, posY, posZ);
+              shootLaser(posX, posY, posZ, dirVecX, dirVecY);
             }
           }
         }
 
-        wasPinching = isPinching;
+        // LÓGICA DO JOGO DO HOMEM-ARANHA (TEIA)
+        if (currentMode === 'spider') {
+          const handX = (middleBase.x - 0.5) * 2.2;
+          const handY = -(middleBase.y - 0.5) * 1.8 - 0.1;
+          const handZ = -0.7;
 
-        // Laser normal da palma para o menu se não estiver com a arma segura
-        if (!isHoldingGun) {
-          const originX = middleBase.x * handCanvas.width;
-          const originY = middleBase.y * handCanvas.height;
-          const dirX = (middleBase.x - wrist.x) * 3.5;
-          const dirY = (middleBase.y - wrist.y) * 3.5;
+          // Fechar a mão pega o cubo vermelho
+          if (isHandClosed && !isHoldingGun && !itemPulled) {
+            isHoldingGun = true;
+            statusLog.innerText = "🔴 Cubo fixado! Faça pinça ou atire a teia.";
+          }
 
-          const targetX = (middleBase.x + dirX) * handCanvas.width;
-          const targetY = (middleBase.y + dirY) * handCanvas.height;
+          // Atirar teia (Pinça) gruda e puxa o cubo fluidamente para a mão
+          if (isPinching && isHoldingGun && !spiderWebActive && !itemPulled) {
+            spiderWebActive = true;
+            itemPullProgress = 0;
+            const currentItemPos = spiderItem.object3D.position;
+            startPullPos = { x: currentItemPos.x, y: currentItemPos.y, z: currentItemPos.z };
+            statusLog.innerText = "🕸️ Teia disparada! Puxando item...";
+          }
 
-          smoothPointerX += (targetX - smoothPointerX) * 0.25;
-          smoothPointerY += (targetY - smoothPointerY) * 0.25;
+          // Animação da teia puxando o cubo de forma realista até a mão
+          if (spiderWebActive) {
+            itemPullProgress += 0.05; // Velocidade de puxada
+            if (itemPullProgress >= 1.0) {
+              itemPullProgress = 1.0;
+              spiderWebActive = false;
+              itemPulled = true;
+              statusLog.innerText = "📦 Cubo veio para a sua mão! Abra a mão (Homem-Aranha) para resetar.";
+            }
 
-          drawLaserRay(originX, originY, smoothPointerX, smoothPointerY, isPinching);
+            // Faz o item se mover em direção à mão com curva suave
+            const targetX = startPullPos.x + (handX - startPullPos.x) * itemPullProgress;
+            const targetY = startPullPos.y + (handY - startPullPos.y) * itemPullProgress;
+            const targetZ = startPullPos.z + (handZ - startPullPos.z) * itemPullProgress;
+            spiderItem.object3D.position.set(targetX, targetY, targetZ);
+
+            // Desenhar a linha da teia visível na tela
+            drawSpiderWebLine(middleBase.x * handCanvas.width, middleBase.y * handCanvas.height, window.innerWidth / 2, window.innerHeight / 2);
+          }
+
+          // Gesto do Homem-Aranha reseta o cubo para longe
+          if (isSpiderManGesture && itemPulled) {
+            isHoldingGun = false;
+            itemPulled = false;
+            spiderItem.object3D.position.set((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 1 + 0.5, -2.5);
+            statusLog.innerText = "🕸️ Cubo resetado! Feche a mão para pegar de novo.";
+          }
         }
+
+        wasPinching = isPinching;
       }
 
       handCtx.restore();
     });
 
-    // FUNÇÃO DE ATIRAR O LASER DA ARMA
-    function shootLaser(startX, startY, startZ) {
-      statusLog.innerText = "💥 POW! Tiro disparado!";
-      
-      // Cria a bala laser no A-Frame
+    // TIRO DA ARMA
+    function shootLaser(startX, startY, startZ, dirX, dirY) {
+      statusLog.innerText = "💥 POW!";
       const scene = document.querySelector('a-scene');
       const bullet = document.createElement('a-sphere');
-      bullet.setAttribute('radius', '0.03');
+      bullet.setAttribute('radius', '0.035');
       bullet.setAttribute('material', 'color: #ef4444; shader: flat;');
-      bullet.setAttribute('position', `${startX} ${startY + 0.05} ${startZ - 0.2}`);
+      bullet.setAttribute('position', `${startX} ${startY + 0.03} ${startZ - 0.2}`);
       scene.appendChild(bullet);
 
-      // Animação da bala indo pra frente
+      let bulletX = startX;
+      let bulletY = startY + 0.03;
       let bulletZ = startZ - 0.2;
+      const stepX = dirX * 0.03;
+      const stepY = dirY * 0.03;
+
       const interval = setInterval(() => {
         bulletZ -= 0.1;
-        bullet.setAttribute('position', `${startX} ${startY + 0.05} ${bulletZ}`);
+        bulletX += stepX;
+        bulletY += stepY;
+        bullet.setAttribute('position', `${bulletX} ${bulletY} ${bulletZ}`);
 
-        // Checa se acertou o bichinho
         const monsterPos = targetMonster.object3D.position;
-        const dist = Math.hypot(startX - monsterPos.x, (startY + 0.05) - monsterPos.y, bulletZ - monsterPos.z);
+        const dist = Math.hypot(bulletX - monsterPos.x, bulletY - monsterPos.y, bulletZ - monsterPos.z);
 
         if (dist < 0.3) {
-          statusLog.innerText = "🎯 ACERTOU O BICHINHO!";
-          // Move o bichinho para uma nova posição aleatória
-          targetMonster.object3D.position.set(
-            (Math.random() - 0.5) * 2,
-            (Math.random() - 0.5) * 1 + 0.2,
-            -2
-          );
+          statusLog.innerText = "🎯 ACERTOU O ALVO!";
+          targetMonster.object3D.position.set((Math.random() - 0.5) * 3, -0.2, -2.5 + (Math.random() - 0.5) * 1.5);
           clearInterval(interval);
           bullet.remove();
         }
 
-        if (bulletZ < -4) {
+        if (bulletZ < -5) {
           clearInterval(interval);
           bullet.remove();
         }
       }, 30);
+    }
+
+    // DESENHAR LINHA DA TEIA NA TELA
+    function drawSpiderWebLine(startX, startY, endX, endY) {
+      handCtx.beginPath();
+      handCtx.moveTo(startX, startY);
+      handCtx.lineTo(endX, endY);
+      handCtx.strokeStyle = '#ffffff';
+      handCtx.lineWidth = 4;
+      handCtx.stroke();
     }
 
     function drawHandMesh(landmarks) {
@@ -424,25 +420,9 @@
       }
     }
 
-    function drawLaserRay(startX, startY, endX, endY, pinching) {
-      let colorCore = pinching ? '#22c55e' : '#38bdf8';
-      
-      handCtx.beginPath();
-      handCtx.moveTo(startX, startY);
-      handCtx.lineTo(endX, endY);
-      handCtx.strokeStyle = colorCore;
-      handCtx.lineWidth = pinching ? 6 : 3;
-      handCtx.stroke();
-
-      handCtx.beginPath();
-      handCtx.arc(endX, endY, pinching ? 6 : 9, 0, 2 * Math.PI);
-      handCtx.fillStyle = colorCore;
-      handCtx.fill();
-    }
-
     async function startApp() {
       startBtn.style.display = 'none';
-      controlsContainer.style.display = 'flex';
+      menuContainer.style.display = 'flex';
 
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         try { await DeviceOrientationEvent.requestPermission(); } catch(e) {}
@@ -463,9 +443,9 @@
           requestAnimationFrame(processFrame);
         };
         processFrame();
-        statusLog.innerText = "Sistema de AR com Jogos Ativo!";
+        statusLog.innerText = "🎮 Sistema AR pronto! Escolha um jogo abaixo.";
       } catch (err) {
-        statusLog.innerText = "⚠️ Erro na Câmera.";
+        statusLog.innerText = "⚠️ Erro ao acessar a câmera.";
       }
     }
 
@@ -473,4 +453,3 @@
   </script>
 </body>
 </html>
-
