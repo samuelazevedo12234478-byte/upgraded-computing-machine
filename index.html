@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Meta Quest OS - Interface Fixa</title>
+  <title>Meta Quest OS - 3D Spatial Gyroscope</title>
   <style>
     * {
       box-sizing: border-box;
@@ -18,14 +18,16 @@
       overflow: hidden;
       background-color: #000;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      /* Define a perspectiva tridimensional do ambiente VR/AR */
+      perspective: 1200px;
     }
 
     video {
       display: none;
     }
 
-    /* Camada 1: Câmera + Esqueleto + Laser */
-    #output_canvas {
+    /* Canvas da Câmera (Fundo) */
+    #bg_canvas {
       width: 100vw;
       height: 100vh;
       object-fit: cover;
@@ -34,10 +36,11 @@
       left: 0;
       z-index: 1;
       pointer-events: none;
+      transform-style: preserve-3d;
     }
 
-    /* Camada 2: Container para as Janelas Abertas */
-    #windows-container {
+    /* Wrapper 3D para as Janelas flutuarem */
+    #spatial-scene {
       position: absolute;
       top: 0;
       left: 0;
@@ -45,25 +48,35 @@
       height: 100vh;
       z-index: 10;
       pointer-events: none;
+      transform-style: preserve-3d;
+      transition: transform 0.1s ease-out;
     }
 
-    /* Camada 3: Dock de Aplicativos (SEMPRE NA FRENTE) */
+    #windows-container {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      transform-style: preserve-3d;
+    }
+
+    /* Dock com efeito 3D flutuante */
     #main-dock {
       position: fixed;
-      bottom: 25px;
+      bottom: 30px;
       left: 50%;
-      transform: translateX(-50%);
+      transform: translateX(-50%) translateZ(40px) rotateX(5deg);
       padding: 10px 20px;
       background: rgba(15, 23, 42, 0.92);
       border: 1px solid rgba(255, 255, 255, 0.3);
       border-radius: 40px;
       backdrop-filter: blur(20px);
-      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.9);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.9);
       display: flex;
       gap: 12px;
       align-items: center;
       z-index: 50;
       pointer-events: auto;
+      transform-style: preserve-3d;
     }
 
     .dock-btn {
@@ -82,10 +95,10 @@
     .dock-btn.hovered {
       background: rgba(56, 189, 248, 0.5);
       border-color: #38bdf8;
-      transform: scale(1.06);
+      transform: scale(1.06) translateZ(10px);
     }
 
-    /* Estilo das Janelas Abertas */
+    /* Janelas com Profundidade Spacial */
     .app-window {
       position: absolute;
       width: 88vw;
@@ -95,11 +108,14 @@
       border: 1px solid rgba(255, 255, 255, 0.25);
       border-radius: 18px;
       backdrop-filter: blur(24px);
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), 0 0 20px rgba(56, 189, 248, 0.2);
       display: flex;
       flex-direction: column;
       overflow: hidden;
       pointer-events: auto;
+      /* Eleva a janela no espaço 3D (profundidade) */
+      transform: translateZ(60px);
+      transform-style: preserve-3d;
     }
 
     .window-header {
@@ -155,12 +171,24 @@
       box-shadow: 0 0 12px #38bdf8;
     }
 
+    /* Canvas do Laser/Mão (Sempre na Frente) */
+    #hand_canvas {
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 100;
+      pointer-events: none;
+    }
+
     #startBtn {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      z-index: 100;
+      z-index: 200;
       padding: 18px 36px;
       font-size: 1.1rem;
       font-weight: bold;
@@ -177,7 +205,7 @@
       top: 15px;
       left: 50%;
       transform: translateX(-50%);
-      z-index: 100;
+      z-index: 200;
       color: #cbd5e1;
       font-size: 0.8rem;
       background: rgba(15, 23, 42, 0.88);
@@ -193,26 +221,33 @@
 </head>
 <body>
 
-  <button id="startBtn">Iniciar Meta Quest AR</button>
+  <button id="startBtn">Iniciar Meta Quest AR Spatial</button>
   <video id="webcam" playsinline></video>
 
-  <canvas id="output_canvas"></canvas>
+  <canvas id="bg_canvas"></canvas>
 
-  <div id="windows-container"></div>
-
-  <div id="main-dock">
-    <div class="dock-btn" data-app="Google Busca" data-url="https://html.duckduckgo.com/html/">🌐 Google / Busca</div>
-    <div class="dock-btn" data-app="Wikipédia" data-url="https://pt.m.wikipedia.org">📚 Wikipédia</div>
+  <div id="spatial-scene">
+    <div id="windows-container"></div>
+    <div id="main-dock">
+      <div class="dock-btn" data-app="Google Busca" data-url="https://html.duckduckgo.com/html/">🌐 Busca</div>
+      <div class="dock-btn" data-app="Wikipédia" data-url="https://pt.m.wikipedia.org">📚 Wikipédia</div>
+    </div>
   </div>
 
-  <div id="statusLog">Aponte o laser e pince para usar!</div>
+  <canvas id="hand_canvas"></canvas>
+
+  <div id="statusLog">Giroscópio Spatial 3D Pronto!</div>
 
   <script>
     const videoElement = document.getElementById('webcam');
-    const canvasElement = document.getElementById('output_canvas');
-    const canvasCtx = canvasElement.getContext('2d');
+    const bgCanvas = document.getElementById('bg_canvas');
+    const bgCtx = bgCanvas.getContext('2d');
+    const handCanvas = document.getElementById('hand_canvas');
+    const handCtx = handCanvas.getContext('2d');
+
     const startBtn = document.getElementById('startBtn');
     const statusLog = document.getElementById('statusLog');
+    const spatialScene = document.getElementById('spatial-scene');
     const windowsContainer = document.getElementById('windows-container');
     const dockButtons = document.querySelectorAll('.dock-btn');
 
@@ -228,6 +263,52 @@
     let smoothPointerX = window.innerWidth / 2;
     let smoothPointerY = window.innerHeight / 2;
 
+    // VARIÁVEIS DE GIROSCÓPIO & PROFUNDIDADE
+    let baseBeta = null;
+    let baseGamma = null;
+    let gyroX = 0, gyroY = 0;
+    let targetGyroX = 0, targetGyroY = 0;
+
+    function handleOrientation(event) {
+      if (baseBeta === null) {
+        baseBeta = event.beta;
+        baseGamma = event.gamma;
+      }
+
+      // Calcula o deslocamento do celular
+      let deltaBeta = event.beta - baseBeta;   // Inclinação Frente/Trás
+      let deltaGamma = event.gamma - baseGamma; // Inclinação Esquerda/Direita
+
+      // Limita os ângulos para manter estabilidade
+      targetGyroX = Math.max(-25, Math.min(25, deltaBeta)) * 0.6;
+      targetGyroY = Math.max(-25, Math.min(25, deltaGamma)) * 0.6;
+    }
+
+    // Suavização do Giroscópio no Loop de Animação
+    function updateGyroEffect() {
+      gyroX += (targetGyroX - gyroX) * 0.1;
+      gyroY += (targetGyroY - gyroY) * 0.1;
+
+      // Aplica a rotação tridimensional na cena espacial
+      spatialScene.style.transform = `rotateX(${-gyroX}deg) rotateY(${gyroY}deg) translateZ(20px)`;
+      requestAnimationFrame(updateGyroEffect);
+    }
+
+    async function requestGyroPermission() {
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        try {
+          const permissionState = await DeviceOrientationEvent.requestPermission();
+          if (permissionState === 'granted') {
+            window.addEventListener('deviceorientation', handleOrientation);
+          }
+        } catch (e) {
+          console.log("Erro de permissão no giroscópio:", e);
+        }
+      } else {
+        window.addEventListener('deviceorientation', handleOrientation);
+      }
+    }
+
     const hands = new Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
@@ -240,12 +321,16 @@
     });
 
     hands.onResults((results) => {
-      canvasElement.width = window.innerWidth;
-      canvasElement.height = window.innerHeight;
+      bgCanvas.width = handCanvas.width = window.innerWidth;
+      bgCanvas.height = handCanvas.height = window.innerHeight;
 
-      canvasCtx.save();
-      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-      canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+      bgCtx.save();
+      bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+      bgCtx.drawImage(results.image, 0, 0, bgCanvas.width, bgCanvas.height);
+      bgCtx.restore();
+
+      handCtx.save();
+      handCtx.clearRect(0, 0, handCanvas.width, handCanvas.height);
 
       let isHoveringAny = false;
 
@@ -260,13 +345,13 @@
         const middleTip = landmarks[12];
 
         // Feixe Laser
-        const originX = indexTip.x * canvasElement.width;
-        const originY = indexTip.y * canvasElement.height;
+        const originX = indexTip.x * handCanvas.width;
+        const originY = indexTip.y * handCanvas.height;
         const dirX = (indexTip.x - indexBase.x) * 3.5;
         const dirY = (indexTip.y - indexBase.y) * 3.5;
 
-        const targetX = (indexTip.x + dirX) * canvasElement.width;
-        const targetY = (indexTip.y + dirY) * canvasElement.height;
+        const targetX = (indexTip.x + dirX) * handCanvas.width;
+        const targetY = (indexTip.y + dirY) * handCanvas.height;
 
         smoothPointerX += (targetX - smoothPointerX) * 0.25;
         smoothPointerY += (targetY - smoothPointerY) * 0.25;
@@ -288,7 +373,7 @@
         const pinchDuration = isPinching ? (now - pinchStartTime) : 0;
         const movedDistance = Math.hypot(smoothPointerX - pinchStartX, smoothPointerY - pinchStartY);
 
-        // 1. Interagir com o Dock de Botões
+        // Interação Dock
         if (!activeDraggingWindow && !isContentScrolling) {
           dockButtons.forEach(btn => {
             const rect = btn.getBoundingClientRect();
@@ -298,7 +383,6 @@
               btn.classList.add('hovered');
               if (isPinching && !wasPinching) {
                 createAppWindow(btn.dataset.app, btn.dataset.url);
-                statusLog.innerText = "Janela " + btn.dataset.app + " aberta!";
               }
             } else {
               btn.classList.remove('hovered');
@@ -306,7 +390,7 @@
           });
         }
 
-        // 2. Interagir com as Janelas
+        // Interação Janelas
         const allWindows = document.querySelectorAll('.app-window');
         allWindows.forEach(win => {
           const iframe = win.querySelector('.window-body');
@@ -340,7 +424,7 @@
             }
           }
 
-          // Rolagem & Clique Interno
+          // Scroll na Janela
           const wRect = win.getBoundingClientRect();
           const isInsideBody = smoothPointerX >= wRect.left && smoothPointerX <= wRect.right &&
                                smoothPointerY >= (wRect.top + 38) && smoothPointerY <= (wRect.bottom - 20);
@@ -382,15 +466,14 @@
         wasPinching = false;
       }
 
-      canvasCtx.restore();
+      handCtx.restore();
     });
 
     function createAppWindow(appName, url) {
       const windowEl = document.createElement('div');
       windowEl.className = 'app-window';
-      // Posiciona no topo/centro para não tampar o dock
       windowEl.style.left = `${Math.max(10, (window.innerWidth - 480) / 2)}px`;
-      windowEl.style.top = `60px`;
+      windowEl.style.top = `70px`;
 
       windowEl.innerHTML = `
         <div class="window-header">
@@ -410,38 +493,42 @@
       for (const connection of HAND_CONNECTIONS) {
         const from = landmarks[connection[0]];
         const to = landmarks[connection[1]];
-        canvasCtx.beginPath();
-        canvasCtx.moveTo(from.x * canvasElement.width, from.y * canvasElement.height);
-        canvasCtx.lineTo(to.x * canvasElement.width, to.y * canvasElement.height);
-        canvasCtx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
-        canvasCtx.lineWidth = 3;
-        canvasCtx.stroke();
+        handCtx.beginPath();
+        handCtx.moveTo(from.x * handCanvas.width, from.y * handCanvas.height);
+        handCtx.lineTo(to.x * handCanvas.width, to.y * handCanvas.height);
+        handCtx.strokeStyle = 'rgba(56, 189, 248, 0.6)';
+        handCtx.lineWidth = 3;
+        handCtx.stroke();
       }
       for (const landmark of landmarks) {
-        canvasCtx.beginPath();
-        canvasCtx.arc(landmark.x * canvasElement.width, landmark.y * canvasElement.height, 4.5, 0, 2 * Math.PI);
-        canvasCtx.fillStyle = '#38bdf8';
-        canvasCtx.fill();
+        handCtx.beginPath();
+        handCtx.arc(landmark.x * handCanvas.width, landmark.y * handCanvas.height, 4.5, 0, 2 * Math.PI);
+        handCtx.fillStyle = '#38bdf8';
+        handCtx.fill();
       }
     }
 
     function drawLaserRay(startX, startY, endX, endY, isPinching, isHovering) {
       let colorCore = isPinching ? '#22c55e' : (isHovering ? '#38bdf8' : '#ffffff');
-      canvasCtx.beginPath();
-      canvasCtx.moveTo(startX, startY);
-      canvasCtx.lineTo(endX, endY);
-      canvasCtx.strokeStyle = colorCore;
-      canvasCtx.lineWidth = isPinching ? 6 : 3;
-      canvasCtx.stroke();
+      
+      handCtx.beginPath();
+      handCtx.moveTo(startX, startY);
+      handCtx.lineTo(endX, endY);
+      handCtx.strokeStyle = colorCore;
+      handCtx.lineWidth = isPinching ? 6 : 3;
+      handCtx.stroke();
 
-      canvasCtx.beginPath();
-      canvasCtx.arc(endX, endY, isPinching ? 6 : 9, 0, 2 * Math.PI);
-      canvasCtx.fillStyle = colorCore;
-      canvasCtx.fill();
+      handCtx.beginPath();
+      handCtx.arc(endX, endY, isPinching ? 6 : 9, 0, 2 * Math.PI);
+      handCtx.fillStyle = colorCore;
+      handCtx.fill();
     }
 
     async function startCamera() {
       startBtn.style.display = 'none';
+      await requestGyroPermission();
+      updateGyroEffect();
+
       createAppWindow('Wikipédia', 'https://pt.m.wikipedia.org');
 
       try {
